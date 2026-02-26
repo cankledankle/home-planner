@@ -1,0 +1,452 @@
+package handlers
+
+import (
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
+	"github.com/cankledankle/home-planner/internal/db"
+	"github.com/gofiber/fiber/v2"
+)
+
+type ImportHandler struct{}
+
+func NewImportHandler() *ImportHandler {
+	return &ImportHandler{}
+}
+
+func (h *ImportHandler) PreviewCSV(c *fiber.Ctx) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "CSV file is required",
+			},
+		})
+	}
+
+	fileContent, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "INTERNAL_ERROR",
+				"message": "Failed to open CSV file",
+			},
+		})
+	}
+	defer fileContent.Close()
+
+	reader := csv.NewReader(fileContent)
+	reader.FieldsPerRecord = -1
+
+	columns, err := reader.Read()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Failed to read CSV header",
+			},
+		})
+	}
+
+	var previewRows []map[string]string
+	rowCount := 0
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
+		rowCount++
+
+		if len(previewRows) < 5 {
+			row := make(map[string]string)
+			for i, col := range columns {
+				if i < len(record) {
+					row[col] = record[i]
+				} else {
+					row[col] = ""
+				}
+			}
+			previewRows = append(previewRows, row)
+		}
+	}
+
+	suggestedMapping := suggestColumnMapping(columns)
+
+	return c.JSON(fiber.Map{
+		"data": fiber.Map{
+			"row_count":         rowCount,
+			"columns":           columns,
+			"preview_rows":      previewRows,
+			"suggested_mapping": suggestedMapping,
+		},
+	})
+}
+
+func suggestColumnMapping(columns []string) map[string]string {
+	mapping := make(map[string]string)
+	fieldAliases := map[string][]string{
+		"name":                {"name", "plan name", "title", "plan"},
+		"type":                {"type", "plan type", "home type"},
+		"style":               {"style", "home style", "architecture"},
+		"beds":                {"beds", "bedrooms", "bed", "bedroom"},
+		"baths":               {"baths", "bathrooms", "bath", "bathroom", "full baths"},
+		"half_baths":          {"half baths", "half_baths", "half baths", "1/2 baths", "half bath"},
+		"main_sf":             {"main sf", "main_sf", "main level sf", "main sqft", "main square feet"},
+		"upper_sf":            {"upper sf", "upper_sf", "upper level sf", "upper sqft", "second floor sf"},
+		"lower_sf":            {"lower sf", "lower_sf", "lower level sf", "lower sqft", "basement sf"},
+		"porch_deck_sf":       {"porch deck sf", "porch_deck_sf", "porch sf", "deck sf", "outdoor sf"},
+		"garage_sf":           {"garage sf", "garage_sf", "garage square feet"},
+		"garage_apartment_sf": {"garage apartment sf", "garage_apartment_sf", "garage apt sf", "apartment sf"},
+		"unfinished_sf":       {"unfinished sf", "unfinished_sf", "unfinished square feet"},
+		"heated_sf":           {"heated sf", "heated_sf", "heated square feet", "heated sqft", "living area"},
+		"total_sf":            {"total sf", "total_sf", "total square feet", "total sqft"},
+		"notes":               {"notes", "description", "comments"},
+	}
+
+	for _, col := range columns {
+		colLower := strings.ToLower(strings.TrimSpace(col))
+		for field, aliases := range fieldAliases {
+			for _, alias := range aliases {
+				if colLower == alias {
+					mapping[col] = field
+					break
+				}
+			}
+		}
+	}
+
+	return mapping
+}
+
+type ImportCSVRequest struct {
+	Mapping json.RawMessage `json:"mapping"`
+	Mode    string          `json:"mode"`
+}
+
+type ImportResult struct {
+	Created int           `json:"created"`
+	Updated int           `json:"updated"`
+	Skipped int           `json:"skipped"`
+	Errors  []ImportError `json:"errors"`
+}
+
+type ImportError struct {
+	Row     int    `json:"row"`
+	Message string `json:"message"`
+}
+
+func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "CSV file is required",
+			},
+		})
+	}
+
+	mappingJSON := c.FormValue("mapping")
+	if mappingJSON == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Mapping is required",
+			},
+		})
+	}
+
+	var mapping map[string]string
+	if err := json.Unmarshal([]byte(mappingJSON), &mapping); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Invalid mapping JSON",
+			},
+		})
+	}
+
+	mode := c.FormValue("mode", "upsert")
+	if mode != "create_only" && mode != "update_only" && mode != "upsert" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Invalid mode. Use: create_only, update_only, or upsert",
+			},
+		})
+	}
+
+	userID := c.Locals("userID").(string)
+
+	fileContent, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "INTERNAL_ERROR",
+				"message": "Failed to open CSV file",
+			},
+		})
+	}
+	defer fileContent.Close()
+
+	reader := csv.NewReader(fileContent)
+	reader.FieldsPerRecord = -1
+
+	columns, err := reader.Read()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Failed to read CSV header",
+			},
+		})
+	}
+
+	result := ImportResult{
+		Created: 0,
+		Updated: 0,
+		Skipped: 0,
+		Errors:  []ImportError{},
+	}
+
+	ctx := c.Context()
+	rowNum := 1
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			result.Errors = append(result.Errors, ImportError{
+				Row:     rowNum,
+				Message: fmt.Sprintf("Failed to read row: %v", err),
+			})
+			rowNum++
+			continue
+		}
+		rowNum++
+
+		rowData := make(map[string]string)
+		for i, col := range columns {
+			if i < len(record) {
+				rowData[col] = record[i]
+			} else {
+				rowData[col] = ""
+			}
+		}
+
+		planData := extractPlanData(rowData, mapping)
+
+		if planData.Name == "" {
+			result.Errors = append(result.Errors, ImportError{
+				Row:     rowNum - 1,
+				Message: "Plan name is required",
+			})
+			continue
+		}
+
+		existingPlan, err := db.GetPlanBySlug(ctx, planData.Slug)
+		if err != nil {
+			result.Errors = append(result.Errors, ImportError{
+				Row:     rowNum - 1,
+				Message: fmt.Sprintf("Database error: %v", err),
+			})
+			continue
+		}
+
+		if existingPlan != nil {
+			if mode == "create_only" {
+				result.Skipped++
+				continue
+			}
+
+			updateInput := db.UpdatePlanInput{
+				Name:              planData.Name,
+				Type:              planData.Type,
+				Style:             planData.Style,
+				Beds:              planData.Beds,
+				Baths:             planData.Baths,
+				HalfBaths:         planData.HalfBaths,
+				MainSF:            planData.MainSF,
+				UpperSF:           planData.UpperSF,
+				LowerSF:           planData.LowerSF,
+				PorchDeckSF:       planData.PorchDeckSF,
+				GarageSF:          planData.GarageSF,
+				GarageApartmentSF: planData.GarageApartmentSF,
+				UnfinishedSF:      planData.UnfinishedSF,
+				HeatedSF:          planData.HeatedSF,
+				TotalSF:           planData.TotalSF,
+				Notes:             planData.Notes,
+				UpdatedBy:         userID,
+			}
+
+			_, err := db.UpdatePlan(ctx, existingPlan.ID, updateInput)
+			if err != nil {
+				result.Errors = append(result.Errors, ImportError{
+					Row:     rowNum - 1,
+					Message: fmt.Sprintf("Failed to update plan: %v", err),
+				})
+				continue
+			}
+			result.Updated++
+		} else {
+			if mode == "update_only" {
+				result.Skipped++
+				continue
+			}
+
+			createInput := db.CreatePlanInput{
+				Name:              planData.Name,
+				Type:              planData.Type,
+				Style:             planData.Style,
+				Beds:              planData.Beds,
+				Baths:             planData.Baths,
+				HalfBaths:         planData.HalfBaths,
+				MainSF:            planData.MainSF,
+				UpperSF:           planData.UpperSF,
+				LowerSF:           planData.LowerSF,
+				PorchDeckSF:       planData.PorchDeckSF,
+				GarageSF:          planData.GarageSF,
+				GarageApartmentSF: planData.GarageApartmentSF,
+				UnfinishedSF:      planData.UnfinishedSF,
+				HeatedSF:          planData.HeatedSF,
+				TotalSF:           planData.TotalSF,
+				Notes:             planData.Notes,
+				CreatedBy:         userID,
+			}
+
+			_, err := db.CreatePlan(ctx, createInput)
+			if err != nil {
+				result.Errors = append(result.Errors, ImportError{
+					Row:     rowNum - 1,
+					Message: fmt.Sprintf("Failed to create plan: %v", err),
+				})
+				continue
+			}
+			result.Created++
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"data": result,
+	})
+}
+
+type ImportPlanData struct {
+	Name              string
+	Slug              string
+	Type              *string
+	Style             *string
+	Beds              *int
+	Baths             *int
+	HalfBaths         *int
+	MainSF            *int
+	UpperSF           *int
+	LowerSF           *int
+	PorchDeckSF       *int
+	GarageSF          *int
+	GarageApartmentSF *int
+	UnfinishedSF      *int
+	HeatedSF          *int
+	TotalSF           *int
+	Notes             *string
+}
+
+func extractPlanData(rowData map[string]string, mapping map[string]string) ImportPlanData {
+	data := ImportPlanData{}
+
+	for col, field := range mapping {
+		value := strings.TrimSpace(rowData[col])
+		switch field {
+		case "name":
+			data.Name = value
+			if data.Name != "" {
+				data.Slug = generateSlug(data.Name)
+			}
+		case "type":
+			if value != "" {
+				data.Type = &value
+			}
+		case "style":
+			if value != "" {
+				data.Style = &value
+			}
+		case "beds":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.Beds = &v
+			}
+		case "baths":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.Baths = &v
+			}
+		case "half_baths":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.HalfBaths = &v
+			}
+		case "main_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.MainSF = &v
+			}
+		case "upper_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.UpperSF = &v
+			}
+		case "lower_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.LowerSF = &v
+			}
+		case "porch_deck_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.PorchDeckSF = &v
+			}
+		case "garage_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.GarageSF = &v
+			}
+		case "garage_apartment_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.GarageApartmentSF = &v
+			}
+		case "unfinished_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.UnfinishedSF = &v
+			}
+		case "heated_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.HeatedSF = &v
+			}
+		case "total_sf":
+			if v, err := strconv.Atoi(value); err == nil {
+				data.TotalSF = &v
+			}
+		case "notes":
+			if value != "" {
+				data.Notes = &value
+			}
+		}
+	}
+
+	return data
+}
+
+func generateSlug(name string) string {
+	slug := strings.ToLower(name)
+	slug = strings.ReplaceAll(slug, " ", "-")
+	slug = strings.ReplaceAll(slug, "_", "-")
+	var result strings.Builder
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}

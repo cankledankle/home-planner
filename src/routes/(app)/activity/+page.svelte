@@ -2,17 +2,13 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import {
-		Select,
-		SelectContent,
-		SelectItem,
-		SelectTrigger,
-		SelectValue
-	} from '$lib/components/ui/select';
+
 	import { getActivities, getUsers, getPlans } from '$lib/api';
 	import { toast } from 'svelte-sonner';
-	import { Clock, Filter, ChevronLeft, ChevronRight, X } from '@lucide/svelte';
+	import { Clock, Filter, ChevronLeft, ChevronRight, X, History } from '@lucide/svelte';
 	import type { Activity, PaginatedResponse, User, Plan } from '$lib/types';
+	import EmptyState from '$lib/components/ui/empty-state/EmptyState.svelte';
+	import TableSkeleton from '$lib/components/ui/skeleton/TableSkeleton.svelte';
 
 	// Filters
 	let userFilter = $state('');
@@ -148,9 +144,9 @@
 
 	<!-- Filters -->
 	<div class="rounded-lg border border-slate-200 bg-white p-4">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-			<div class="flex-1 space-y-2">
-				<label class="text-sm font-medium text-slate-700">User</label>
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="space-y-2">
+				<span class="text-sm font-medium text-slate-700">User</span>
 				<select
 					bind:value={userFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -163,8 +159,8 @@
 				</select>
 			</div>
 
-			<div class="flex-1 space-y-2">
-				<label class="text-sm font-medium text-slate-700">Action</label>
+			<div class="space-y-2">
+				<span class="text-sm font-medium text-slate-700">Action</span>
 				<select
 					bind:value={actionFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -176,8 +172,8 @@
 				</select>
 			</div>
 
-			<div class="flex-1 space-y-2">
-				<label class="text-sm font-medium text-slate-700">Plan</label>
+			<div class="space-y-2 sm:col-span-2 lg:col-span-1">
+				<span class="text-sm font-medium text-slate-700">Plan</span>
 				<select
 					bind:value={planFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -189,68 +185,131 @@
 					{/each}
 				</select>
 			</div>
-
-			{#if hasActiveFilters}
-				<Button variant="ghost" onclick={clearFilters}>
-					<X class="mr-2 h-4 w-4" />
-					Clear
-				</Button>
-			{/if}
 		</div>
+		{#if hasActiveFilters}
+			<div class="mt-4 flex justify-end">
+				<Button variant="ghost" size="sm" onclick={clearFilters}>
+					<X class="mr-2 h-4 w-4" />
+					Clear Filters
+				</Button>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Activity List -->
 	<div class="rounded-lg border border-slate-200 bg-white">
 		{#if loading}
-			<div class="p-8 text-center">
-				<div class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-				<p class="mt-2 text-sm text-slate-500">Loading activity...</p>
-			</div>
+			<TableSkeleton count={5} />
 		{:else if !activities || activities.data.length === 0}
-			<div class="p-8 text-center">
-				<Clock class="mx-auto mb-4 h-12 w-12 text-slate-300" />
-				<h3 class="mb-2 text-lg font-medium text-slate-900">No activity found</h3>
-				<p class="text-slate-600">
-					{hasActiveFilters
+			<div class="p-8">
+				<EmptyState
+					icon={History}
+					title="No activity found"
+					description={hasActiveFilters
 						? 'Try adjusting your filters to see more results'
 						: 'Activity will appear here when users perform actions'}
-				</p>
+					actionLabel={hasActiveFilters ? 'Clear Filters' : undefined}
+					onAction={hasActiveFilters ? clearFilters : undefined}
+				/>
 			</div>
 		{:else}
-			<!-- Table Header -->
-			<div class="border-b border-slate-200 bg-slate-50 px-6 py-3">
-				<div
-					class="grid grid-cols-12 gap-4 text-xs font-medium tracking-wider text-slate-500 uppercase"
-				>
-					<div class="col-span-3">User</div>
-					<div class="col-span-3">Action</div>
-					<div class="col-span-4">Details</div>
-					<div class="col-span-2">Time</div>
+			<!-- Desktop Table View (hidden on mobile) -->
+			<div class="hidden md:block">
+				<!-- Table Header -->
+				<div class="border-b border-slate-200 bg-slate-50 px-6 py-3">
+					<div
+						class="grid grid-cols-12 gap-4 text-xs font-medium tracking-wider text-slate-500 uppercase"
+					>
+						<div class="col-span-3">User</div>
+						<div class="col-span-3">Action</div>
+						<div class="col-span-4">Details</div>
+						<div class="col-span-2">Time</div>
+					</div>
+				</div>
+
+				<!-- Activity Items -->
+				<div class="divide-y divide-slate-100">
+					{#each activities.data as activity}
+						<div class="grid grid-cols-12 items-center gap-4 px-6 py-4 hover:bg-slate-50">
+							<!-- User -->
+							<div class="col-span-3 flex items-center gap-3">
+								<div
+									class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
+								>
+									<span class="text-sm font-medium text-slate-600">
+										{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
+									</span>
+								</div>
+								<span class="truncate font-medium text-slate-900">
+									{activity.user?.name ?? 'Unknown'}
+								</span>
+							</div>
+
+							<!-- Action -->
+							<div class="col-span-3">
+								<span
+									class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+									{activity.action.includes('created')
+										? 'bg-green-100 text-green-800'
+										: activity.action.includes('deleted')
+											? 'bg-red-100 text-red-800'
+											: activity.action.includes('updated')
+												? 'bg-blue-100 text-blue-800'
+												: 'bg-slate-100 text-slate-800'}"
+								>
+									{formatAction(activity.action)}
+								</span>
+							</div>
+
+							<!-- Details -->
+							<div class="col-span-4 text-sm text-slate-600">
+								{#if activity.plan}
+									<a
+										href="/plans/{activity.plan.id}"
+										class="font-medium text-blue-600 hover:text-blue-700"
+									>
+										{activity.plan.name}
+									</a>
+								{:else if activity.detail}
+									<span class="text-slate-500">{JSON.stringify(activity.detail)}</span>
+								{:else}
+									<span class="text-slate-400">—</span>
+								{/if}
+							</div>
+
+							<!-- Time -->
+							<div class="col-span-2 text-sm text-slate-500" title={formatDate(activity.created_at)}>
+								{formatTime(activity.created_at)}
+							</div>
+						</div>
+					{/each}
 				</div>
 			</div>
 
-			<!-- Activity Items -->
-			<div class="divide-y divide-slate-100">
+			<!-- Mobile Card View (shown only on mobile) -->
+			<div class="md:hidden divide-y divide-slate-100">
 				{#each activities.data as activity}
-					<div class="grid grid-cols-12 items-center gap-4 px-6 py-4 hover:bg-slate-50">
-						<!-- User -->
-						<div class="col-span-3 flex items-center gap-3">
-							<div
-								class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
-							>
-								<span class="text-sm font-medium text-slate-600">
-									{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
-								</span>
+					<div class="p-4 hover:bg-slate-50">
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex items-center gap-3 min-w-0 flex-1">
+								<div
+									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
+								>
+									<span class="text-sm font-medium text-slate-600">
+										{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
+									</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="font-medium text-slate-900 truncate">
+										{activity.user?.name ?? 'Unknown'}
+									</p>
+									<p class="text-xs text-slate-500">
+										{formatTime(activity.created_at)}
+									</p>
+								</div>
 							</div>
-							<span class="truncate font-medium text-slate-900">
-								{activity.user?.name ?? 'Unknown'}
-							</span>
-						</div>
-
-						<!-- Action -->
-						<div class="col-span-3">
 							<span
-								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0
 								{activity.action.includes('created')
 									? 'bg-green-100 text-green-800'
 									: activity.action.includes('deleted')
@@ -262,26 +321,19 @@
 								{formatAction(activity.action)}
 							</span>
 						</div>
-
-						<!-- Details -->
-						<div class="col-span-4 text-sm text-slate-600">
+						<div class="mt-3 pl-13">
 							{#if activity.plan}
 								<a
 									href="/plans/{activity.plan.id}"
-									class="font-medium text-blue-600 hover:text-blue-700"
+									class="text-sm font-medium text-blue-600 hover:text-blue-700"
 								>
 									{activity.plan.name}
 								</a>
 							{:else if activity.detail}
-								<span class="text-slate-500">{JSON.stringify(activity.detail)}</span>
+								<span class="text-sm text-slate-500">{JSON.stringify(activity.detail)}</span>
 							{:else}
-								<span class="text-slate-400">—</span>
+								<span class="text-sm text-slate-400">—</span>
 							{/if}
-						</div>
-
-						<!-- Time -->
-						<div class="col-span-2 text-sm text-slate-500" title={formatDate(activity.created_at)}>
-							{formatTime(activity.created_at)}
 						</div>
 					</div>
 				{/each}
@@ -289,14 +341,14 @@
 
 			<!-- Pagination -->
 			{#if totalPages > 1}
-				<div class="flex items-center justify-between border-t border-slate-200 px-6 py-4">
-					<div class="text-sm text-slate-600">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200 px-6 py-4">
+					<div class="text-sm text-slate-600 text-center sm:text-left">
 						Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
 							currentPage * itemsPerPage,
 							activities.meta.total
 						)} of {activities.meta.total} activities
 					</div>
-					<div class="flex items-center gap-2">
+					<div class="flex items-center justify-center gap-2">
 						<Button
 							variant="outline"
 							size="sm"
@@ -304,9 +356,9 @@
 							onclick={() => (currentPage = Math.max(1, currentPage - 1))}
 						>
 							<ChevronLeft class="mr-1 h-4 w-4" />
-							Previous
+							<span class="hidden sm:inline">Previous</span>
 						</Button>
-						<span class="text-sm text-slate-600">
+						<span class="text-sm text-slate-600 px-2">
 							Page {currentPage} of {totalPages}
 						</span>
 						<Button
@@ -315,7 +367,7 @@
 							disabled={currentPage >= totalPages}
 							onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))}
 						>
-							Next
+							<span class="hidden sm:inline">Next</span>
 							<ChevronRight class="ml-1 h-4 w-4" />
 						</Button>
 					</div>

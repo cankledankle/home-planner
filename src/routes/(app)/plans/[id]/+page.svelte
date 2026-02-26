@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
@@ -47,11 +47,16 @@
 		Loader2
 	} from '@lucide/svelte';
 	import FilesTab from '$lib/components/plan/FilesTab.svelte';
+	import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
 
 	let plan = $state<PlanWithFiles | null>(null);
 	let loading = $state(true);
-	let activeTab = $state<'overview' | 'files' | 'activity'>('overview');
 	let editing = $state(false);
+	
+	// Get active tab from URL query param, default to 'overview'
+	let activeTab = $derived<'overview' | 'files' | 'activity'>(
+		($page.url.searchParams.get('tab') as 'overview' | 'files' | 'activity') || 'overview'
+	);
 	let saving = $state(false);
 	let activities = $state<PaginatedResponse<Activity> | null>(null);
 
@@ -71,12 +76,34 @@
 	let uploadFile = $state<File | null>(null);
 	let uploadLoading = $state(false);
 
+	// Slot image URLs cache
+	let slotImageUrls = $state<Record<string, string | null>>({});
+
 	// Slot delete confirmation
 	let deleteSlotOpen = $state(false);
 	let deleteSlotFile = $state<FileType | null>(null);
 	let deleteSlotLoading = $state(false);
 
-	const planId = $derived($page.params.id);
+	// Plan delete confirmation
+	let deletePlanOpen = $state(false);
+
+	const planId = $derived($page.params.id!);
+
+	// Warn about unsaved changes when leaving page while editing
+	function handleBeforeUnload(e: BeforeUnloadEvent) {
+		if (editing) {
+			e.preventDefault();
+			e.returnValue = '';
+		}
+	}
+
+	onMount(() => {
+		window.addEventListener('beforeunload', handleBeforeUnload);
+	});
+
+	onDestroy(() => {
+		window.removeEventListener('beforeunload', handleBeforeUnload);
+	});
 
 	onMount(async () => {
 		if (!planId) {
@@ -92,12 +119,35 @@
 		try {
 			plan = await getPlan(planId);
 			editForm = { ...plan };
+			// Load signed URLs for all website slot images
+			await loadSlotImageUrls();
 		} catch (err) {
 			toast.error('Failed to load plan');
 			goto('/plans');
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function loadSlotImageUrls() {
+		if (!plan) return;
+
+		const urls: Record<string, string | null> = {};
+		const slotFiles = plan.files.website;
+
+		// Load URLs for all filled slots
+		for (const [slotKey, file] of Object.entries(slotFiles)) {
+			if (file) {
+				try {
+					const result = await getFileUrl(file.id);
+					urls[slotKey] = result.url;
+				} catch (err) {
+					urls[slotKey] = null;
+				}
+			}
+		}
+
+		slotImageUrls = urls;
 	}
 
 	async function loadActivities() {
@@ -148,7 +198,12 @@
 	}
 
 	async function handleDelete() {
-		if (!planId || !confirm('Are you sure you want to delete this plan?')) return;
+		if (!planId) return;
+		deletePlanOpen = true;
+	}
+
+	async function confirmDelete() {
+		if (!planId) return;
 		try {
 			await deletePlan(planId);
 			toast.success('Plan deleted successfully');
@@ -309,13 +364,16 @@
 					{:else}
 						<h1 class="text-3xl font-bold text-slate-900">{plan.name}</h1>
 					{/if}
-					<div class="mt-1 flex items-center gap-2">
+				<div class="mt-1 flex items-center gap-2">
+					{#if plan.status}
+						{@const StatusIcon = getStatusIcon(plan.status)}
 						<Badge variant="secondary" class={getStatusColor(plan.status)}>
-							<svelte:component this={getStatusIcon(plan.status)} class="mr-1 h-3 w-3" />
+							<StatusIcon class="mr-1 h-3 w-3" />
 							{plan.status}
 						</Badge>
-						<span class="text-sm text-slate-500">Slug: {plan.slug}</span>
-					</div>
+					{/if}
+					<span class="text-sm text-slate-500">Slug: {plan.slug}</span>
+				</div>
 				</div>
 			</div>
 
@@ -355,35 +413,35 @@
 		<!-- Tabs -->
 		<div class="border-b border-slate-200">
 			<nav class="flex gap-1">
-				<button
-					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
-					'overview'
-						? 'border-blue-600 text-blue-600'
-						: 'border-transparent text-slate-600 hover:text-slate-900'}"
-					onclick={() => (activeTab = 'overview')}
-				>
-					<Image class="mr-2 inline h-4 w-4" />
-					Overview
-				</button>
-				<button
-					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab === 'files'
-						? 'border-blue-600 text-blue-600'
-						: 'border-transparent text-slate-600 hover:text-slate-900'}"
-					onclick={() => (activeTab = 'files')}
-				>
-					<FileText class="mr-2 inline h-4 w-4" />
-					Files
-				</button>
-				<button
-					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
-					'activity'
-						? 'border-blue-600 text-blue-600'
-						: 'border-transparent text-slate-600 hover:text-slate-900'}"
-					onclick={() => (activeTab = 'activity')}
-				>
-					<History class="mr-2 inline h-4 w-4" />
-					Activity
-				</button>
+			<button
+				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
+				'overview'
+					? 'border-blue-600 text-blue-600'
+					: 'border-transparent text-slate-600 hover:text-slate-900'}"
+				onclick={() => goto(`?tab=overview`, { replaceState: true })}
+			>
+				<Image class="mr-2 inline h-4 w-4" />
+				Overview
+			</button>
+			<button
+				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab === 'files'
+					? 'border-blue-600 text-blue-600'
+					: 'border-transparent text-slate-600 hover:text-slate-900'}"
+				onclick={() => goto(`?tab=files`, { replaceState: true })}
+			>
+				<FileText class="mr-2 inline h-4 w-4" />
+				Files
+			</button>
+			<button
+				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
+				'activity'
+					? 'border-blue-600 text-blue-600'
+					: 'border-transparent text-slate-600 hover:text-slate-900'}"
+				onclick={() => goto(`?tab=activity`, { replaceState: true })}
+			>
+				<History class="mr-2 inline h-4 w-4" />
+				Activity
+			</button>
 			</nav>
 		</div>
 
@@ -506,11 +564,23 @@
 							{@const file = plan.files.website[slot.key as keyof typeof plan.files.website]}
 							{#if file}
 								<!-- Filled slot with image preview and actions -->
+								{@const imageUrl = slotImageUrls[slot.key]}
 								<div
 									class="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
 								>
 									<button class="h-full w-full" onclick={() => openImagePreview(file)}>
-										<Image class="mx-auto h-12 w-12 text-slate-400" />
+										{#if imageUrl}
+											<img
+												src={imageUrl}
+												alt={slot.label}
+												class="h-full w-full object-cover"
+											/>
+										{:else}
+											<div class="flex h-full w-full flex-col items-center justify-center">
+												<Image class="mx-auto h-12 w-12 text-slate-400" />
+												<p class="mt-2 text-xs text-slate-400">Loading...</p>
+											</div>
+										{/if}
 									</button>
 									<!-- Overlay with actions -->
 									<div
@@ -567,7 +637,7 @@
 				</div>
 			</div>
 		{:else if activeTab === 'files'}
-			<FilesTab {planId} />
+			<FilesTab {planId} onUploadComplete={loadPlan} />
 		{:else if activeTab === 'activity'}
 			<div class="rounded-lg border border-slate-200 bg-white">
 				<div class="border-b border-slate-200 p-6">
@@ -713,3 +783,15 @@
 		</DialogFooter>
 	</DialogContent>
 </Dialog>
+
+<!-- Delete Plan Confirmation -->
+<ConfirmationDialog
+	bind:open={deletePlanOpen}
+	title="Delete Plan"
+	description={`Are you sure you want to delete "${plan?.name}"? This action cannot be undone.`}
+	confirmLabel="Delete Plan"
+	cancelLabel="Cancel"
+	confirmVariant="destructive"
+	onConfirm={confirmDelete}
+	onCancel={() => deletePlanOpen = false}
+/>

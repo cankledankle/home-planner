@@ -11,15 +11,9 @@
 		DialogTrigger,
 		DialogFooter
 	} from '$lib/components/ui/dialog';
-	import {
-		Select,
-		SelectContent,
-		SelectItem,
-		SelectTrigger,
-		SelectValue
-	} from '$lib/components/ui/select';
+
 	import { auth } from '$lib/stores';
-	import { getUsers, createUser, updateUser, deleteUser } from '$lib/api';
+	import { getUsers, createUser, updateUser, deleteUser, getSFTPStatus, getUserSFTP, generateSFTP, rotateSFTP, revokeSFTP, updateSFTPPermission, deleteSFTP } from '$lib/api';
 	import { toast } from 'svelte-sonner';
 	import {
 		Users,
@@ -34,9 +28,19 @@
 		FileSpreadsheet,
 		Download,
 		ChevronDown,
-		ChevronUp
+		ChevronUp,
+		Server,
+		Key,
+		RefreshCw,
+		Lock,
+		Unlock,
+		Eye,
+		EyeOff,
+		Copy
 	} from '@lucide/svelte';
-	import type { User } from '$lib/types';
+	import type { User, SFTPCredentials, SFTPStatus } from '$lib/types';
+	import EmptyState from '$lib/components/ui/empty-state/EmptyState.svelte';
+	import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
 
 	// Data
 	let users = $state<User[]>([]);
@@ -57,9 +61,132 @@
 	});
 	let formLoading = $state(false);
 
+	// SFTP states
+	let sftpStatus = $state<SFTPStatus | null>(null);
+	let sftpCredentials = $state<Record<string, SFTPCredentials>>({});
+	let sftpLoading = $state(false);
+	let sftpSelectedUser = $state<User | null>(null);
+	let sftpDialogOpen = $state(false);
+	let showPassword = $state(false);
+	let newCredentials = $state<SFTPCredentials | null>(null);
+
 	onMount(() => {
 		loadUsers();
+		loadSFTPStatus();
 	});
+
+	async function loadSFTPStatus() {
+		try {
+			sftpStatus = await getSFTPStatus();
+		} catch (err) {
+			sftpStatus = { configured: false, message: 'SFTP service unavailable' };
+		}
+	}
+
+	async function loadUserSFTP(userId: string) {
+		if (!sftpStatus?.configured) return;
+		try {
+			const creds = await getUserSFTP(userId);
+			if (creds) {
+				sftpCredentials[userId] = creds;
+			}
+		} catch (err) {
+			// User doesn't have SFTP credentials yet
+		}
+	}
+
+	function openSFTPDialog(user: User) {
+		sftpSelectedUser = user;
+		newCredentials = null;
+		showPassword = false;
+		sftpDialogOpen = true;
+		loadUserSFTP(user.id);
+	}
+
+	async function handleGenerateSFTP(permission: 'read' | 'readwrite') {
+		if (!sftpSelectedUser) return;
+		sftpLoading = true;
+		try {
+			const creds = await generateSFTP(sftpSelectedUser.id, permission);
+			sftpCredentials[sftpSelectedUser.id] = creds;
+			newCredentials = creds;
+			toast.success('SFTP credentials generated');
+		} catch (err) {
+			toast.error('Failed to generate SFTP credentials');
+		} finally {
+			sftpLoading = false;
+		}
+	}
+
+	async function handleRotateSFTP() {
+		if (!sftpSelectedUser) return;
+		sftpLoading = true;
+		try {
+			const creds = await rotateSFTP(sftpSelectedUser.id);
+			sftpCredentials[sftpSelectedUser.id] = creds;
+			newCredentials = creds;
+			showPassword = true;
+			toast.success('SFTP password rotated');
+		} catch (err) {
+			toast.error('Failed to rotate SFTP credentials');
+		} finally {
+			sftpLoading = false;
+		}
+	}
+
+	async function handleRevokeSFTP() {
+		if (!sftpSelectedUser) return;
+		sftpLoading = true;
+		try {
+			await revokeSFTP(sftpSelectedUser.id);
+			sftpCredentials[sftpSelectedUser.id] = {
+				...sftpCredentials[sftpSelectedUser.id],
+				permission: 'read'
+			};
+			toast.success('SFTP access revoked');
+		} catch (err) {
+			toast.error('Failed to revoke SFTP access');
+		} finally {
+			sftpLoading = false;
+		}
+	}
+
+	async function handleUpdateSFTPPermission(permission: 'read' | 'readwrite') {
+		if (!sftpSelectedUser) return;
+		sftpLoading = true;
+		try {
+			await updateSFTPPermission(sftpSelectedUser.id, permission);
+			sftpCredentials[sftpSelectedUser.id] = {
+				...sftpCredentials[sftpSelectedUser.id],
+				permission
+			};
+			toast.success(`SFTP permission updated to ${permission}`);
+		} catch (err) {
+			toast.error('Failed to update SFTP permission');
+		} finally {
+			sftpLoading = false;
+		}
+	}
+
+	async function handleDeleteSFTP() {
+		if (!sftpSelectedUser) return;
+		sftpLoading = true;
+		try {
+			await deleteSFTP(sftpSelectedUser.id);
+			delete sftpCredentials[sftpSelectedUser.id];
+			toast.success('SFTP credentials deleted');
+			sftpDialogOpen = false;
+		} catch (err) {
+			toast.error('Failed to delete SFTP credentials');
+		} finally {
+			sftpLoading = false;
+		}
+	}
+
+	function copyToClipboard(text: string) {
+		navigator.clipboard.writeText(text);
+		toast.success('Copied to clipboard');
+	}
 
 	async function loadUsers() {
 		loading = true;
@@ -110,13 +237,16 @@
 
 		formLoading = true;
 		try {
-			await createUser({
+			const result = await createUser({
 				name: formData.name,
 				email: formData.email,
 				role: formData.role,
 				password: formData.password
 			});
 			toast.success('User created successfully');
+			if (result && 'sftp_credentials' in result && result.sftp_credentials) {
+				toast.success('SFTP credentials generated automatically');
+			}
 			createDialogOpen = false;
 			resetForm();
 			await loadUsers();
@@ -184,26 +314,18 @@
 	// Export preset reference
 	let expandedPreset = $state<string | null>(null);
 
+	import {
+		EXPORT_PRESETS,
+		EXPORT_PRESET_FIELDS,
+		EXPORT_FIELDS
+	} from '$lib/api';
+
 	const exportPresets = [
 		{
-			id: 'wp-all-import',
+			id: EXPORT_PRESETS.wpAllImport,
 			name: 'WP All Import',
-			description: 'Optimized for WordPress All Import plugin with all required fields',
-			fields: [
-				'id',
-				'name',
-				'slug',
-				'status',
-				'type',
-				'style',
-				'beds',
-				'baths',
-				'half_baths',
-				'heated_sf',
-				'total_sf',
-				'poster_url',
-				'render_front_url'
-			]
+			description: 'Optimized for WordPress All Import plugin with all required fields and image slots',
+			fields: EXPORT_PRESET_FIELDS[EXPORT_PRESETS.wpAllImport]
 		},
 		{
 			id: 'general',
@@ -317,31 +439,35 @@
 				</div>
 			{:else}
 				<div class="divide-y divide-slate-100">
-					{#each users as user}
-						<div class="flex items-center justify-between p-4 hover:bg-slate-50">
-							<div class="flex items-center gap-4">
-								<div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-									<span class="text-sm font-medium text-slate-600">
-										{user.name.charAt(0).toUpperCase()}
-									</span>
-								</div>
-								<div>
-									<p class="font-medium text-slate-900">{user.name}</p>
-									<p class="text-sm text-slate-500">{user.email}</p>
-								</div>
+				{#each users as user}
+					{@const RoleIcon = getRoleIcon(user.role)}
+					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-slate-50">
+						<div class="flex items-center gap-3 min-w-0">
+							<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+								<span class="text-sm font-medium text-slate-600">
+									{user.name.charAt(0).toUpperCase()}
+								</span>
+							</div>
+							<div class="min-w-0 flex-1">
+								<p class="font-medium text-slate-900 truncate">{user.name}</p>
+								<p class="text-sm text-slate-500 truncate">{user.email}</p>
+							</div>
+						</div>
+						<div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+							<div class="flex items-center gap-2">
 								<span
 									class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {getRoleColor(
 										user.role
 									)}"
 								>
-									<svelte:component this={getRoleIcon(user.role)} class="h-3 w-3" />
+									<RoleIcon class="h-3 w-3" />
 									{user.role}
 								</span>
 								{#if user.id === $auth?.id}
 									<span class="text-xs text-slate-400">(You)</span>
 								{/if}
 							</div>
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-1">
 								<Button
 									variant="ghost"
 									size="sm"
@@ -363,10 +489,84 @@
 								</Button>
 							</div>
 						</div>
-					{/each}
+					</div>
+				{/each}
 				</div>
 			{/if}
 		</div>
+
+		<!-- SFTP Credentials Management -->
+		{#if sftpStatus?.configured}
+			<div class="rounded-lg border border-slate-200 bg-white">
+				<div class="border-b border-slate-200 p-6">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
+								<Server class="h-5 w-5 text-orange-600" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-slate-900">SFTP Access</h2>
+								<p class="text-sm text-slate-600">Manage SFTP credentials for user file access</p>
+							</div>
+						</div>
+						{#if sftpStatus.healthy}
+							<span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+								<Check class="h-3 w-3" />
+								Connected
+							</span>
+						{:else}
+							<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+								<X class="h-3 w-3" />
+								Disconnected
+							</span>
+						{/if}
+					</div>
+				</div>
+				{#if loading}
+					<div class="p-8 text-center">
+						<Loader2 class="mx-auto h-8 w-8 animate-spin text-slate-400" />
+						<p class="mt-2 text-sm text-slate-500">Loading users...</p>
+					</div>
+				{:else}
+				<div class="divide-y divide-slate-100">
+					{#each users as user}
+						<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-slate-50">
+							<div class="flex items-center gap-3 min-w-0">
+								<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
+									<span class="text-sm font-medium text-slate-600">
+										{user.name.charAt(0).toUpperCase()}
+									</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="font-medium text-slate-900 truncate">{user.name}</p>
+									<p class="text-sm text-slate-500 truncate">{user.email}</p>
+								</div>
+								{#if sftpCredentials[user.id]}
+									<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {sftpCredentials[user.id].permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
+										<Key class="h-3 w-3" />
+										{sftpCredentials[user.id].permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
+									</span>
+								{:else}
+									<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+										No SFTP
+									</span>
+								{/if}
+							</div>
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => openSFTPDialog(user)}
+								class="w-full sm:w-auto"
+							>
+								<Key class="mr-2 h-4 w-4" />
+								{sftpCredentials[user.id] ? 'Manage' : 'Create'}
+							</Button>
+						</div>
+					{/each}
+				</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Export Preset Reference -->
 		<div class="rounded-lg border border-slate-200 bg-white">
@@ -568,26 +768,178 @@
 </Dialog>
 
 <!-- Delete User Dialog -->
-<Dialog bind:open={deleteDialogOpen}>
-	<DialogContent class="sm:max-w-md">
+<ConfirmationDialog
+	bind:open={deleteDialogOpen}
+	title="Delete User"
+	description="Are you sure you want to delete {selectedUser?.name}? This action cannot be undone."
+	confirmLabel="Delete User"
+	cancelLabel="Cancel"
+	confirmVariant="destructive"
+	onConfirm={handleDelete}
+	onCancel={() => deleteDialogOpen = false}
+/>
+
+<!-- SFTP Credentials Dialog -->
+<Dialog bind:open={sftpDialogOpen}>
+	<DialogContent class="sm:max-w-lg">
 		<DialogHeader>
-			<DialogTitle>Delete User</DialogTitle>
+			<DialogTitle>SFTP Credentials</DialogTitle>
 		</DialogHeader>
-		<div class="py-4">
-			<p class="text-slate-600">
-				Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be
-				undone.
-			</p>
+		<div class="space-y-4 py-4">
+			{#if sftpSelectedUser}
+				<div class="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200">
+						<span class="text-sm font-medium text-slate-600">
+							{sftpSelectedUser.name.charAt(0).toUpperCase()}
+						</span>
+					</div>
+					<div>
+						<p class="font-medium text-slate-900">{sftpSelectedUser.name}</p>
+						<p class="text-sm text-slate-500">{sftpSelectedUser.email}</p>
+					</div>
+				</div>
+
+				{#if newCredentials}
+					<!-- New/Rotated Credentials Display -->
+					<div class="rounded-lg border border-green-200 bg-green-50 p-4">
+						<p class="mb-3 text-sm font-medium text-green-800">New SFTP Credentials Generated</p>
+						<div class="space-y-2">
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Host:</span>
+								<div class="flex items-center gap-2">
+									<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.host}</code>
+									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.host)}>
+										<Copy class="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Port:</span>
+								<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.port}</code>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Username:</span>
+								<div class="flex items-center gap-2">
+									<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.username}</code>
+									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.username)}>
+										<Copy class="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+							{#if newCredentials.password}
+								<div class="flex items-center justify-between">
+									<span class="text-sm text-slate-600">Password:</span>
+									<div class="flex items-center gap-2">
+										<code class="rounded bg-white px-2 py-1 text-sm">
+											{showPassword ? newCredentials.password : '••••••••••••••••'}
+										</code>
+										<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => showPassword = !showPassword}>
+											{#if showPassword}
+												<EyeOff class="h-3 w-3" />
+											{:else}
+												<Eye class="h-3 w-3" />
+											{/if}
+										</Button>
+										<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.password || '')}>
+											<Copy class="h-3 w-3" />
+										</Button>
+									</div>
+								</div>
+							{/if}
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Permission:</span>
+								<span class="rounded-full px-2 py-0.5 text-xs font-medium {newCredentials.permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
+									{newCredentials.permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
+								</span>
+							</div>
+						</div>
+						<p class="mt-3 text-xs text-green-700">
+							Please copy these credentials now. The password will not be shown again.
+						</p>
+					</div>
+				{:else if sftpCredentials[sftpSelectedUser.id]}
+					<!-- Existing Credentials Management -->
+					<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+						<p class="mb-3 text-sm font-medium text-slate-900">SFTP Connection Details</p>
+						<div class="space-y-2">
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Host:</span>
+								<div class="flex items-center gap-2">
+									<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].host}</code>
+									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].host)}>
+										<Copy class="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Port:</span>
+								<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].port}</code>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Username:</span>
+								<div class="flex items-center gap-2">
+									<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].username}</code>
+									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].username)}>
+										<Copy class="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-sm text-slate-600">Permission:</span>
+								<span class="rounded-full px-2 py-0.5 text-xs font-medium {sftpCredentials[sftpSelectedUser.id].permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
+									{sftpCredentials[sftpSelectedUser.id].permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
+								</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="grid grid-cols-2 gap-2">
+						<Button variant="outline" onclick={() => handleRotateSFTP()} disabled={sftpLoading}>
+							<RefreshCw class="mr-2 h-4 w-4" />
+							Rotate Password
+						</Button>
+						{#if sftpCredentials[sftpSelectedUser.id].permission === 'readwrite'}
+							<Button variant="outline" onclick={() => handleUpdateSFTPPermission('read')} disabled={sftpLoading}>
+								<Lock class="mr-2 h-4 w-4" />
+								Set Read-Only
+							</Button>
+						{:else}
+							<Button variant="outline" onclick={() => handleUpdateSFTPPermission('readwrite')} disabled={sftpLoading}>
+								<Unlock class="mr-2 h-4 w-4" />
+								Allow Write
+							</Button>
+						{/if}
+					</div>
+
+					<div class="grid grid-cols-2 gap-2">
+						<Button variant="outline" onclick={() => handleRevokeSFTP()} disabled={sftpLoading}>
+							<Lock class="mr-2 h-4 w-4" />
+							Revoke Access
+						</Button>
+						<Button variant="destructive" onclick={() => handleDeleteSFTP()} disabled={sftpLoading}>
+							<Trash2 class="mr-2 h-4 w-4" />
+							Delete Credentials
+						</Button>
+					</div>
+				{:else}
+					<!-- Create New Credentials -->
+					<p class="text-sm text-slate-600">This user doesn't have SFTP credentials yet.</p>
+					<div class="grid grid-cols-2 gap-2">
+						<Button variant="outline" onclick={() => handleGenerateSFTP('read')} disabled={sftpLoading}>
+							<Lock class="mr-2 h-4 w-4" />
+							Create Read-Only
+						</Button>
+						<Button onclick={() => handleGenerateSFTP('readwrite')} disabled={sftpLoading}>
+							<Unlock class="mr-2 h-4 w-4" />
+							Create Read/Write
+						</Button>
+					</div>
+				{/if}
+			{/if}
 		</div>
 		<DialogFooter>
-			<Button variant="outline" onclick={() => (deleteDialogOpen = false)} disabled={formLoading}>
-				Cancel
-			</Button>
-			<Button variant="destructive" onclick={handleDelete} disabled={formLoading}>
-				{#if formLoading}
-					<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-				{/if}
-				Delete User
+			<Button variant="outline" onclick={() => (sftpDialogOpen = false)} disabled={sftpLoading}>
+				Close
 			</Button>
 		</DialogFooter>
 	</DialogContent>

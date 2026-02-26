@@ -22,13 +22,22 @@
 	let mobileMenuOpen = $state(false);
 
 	onMount(async () => {
-		const user = await api.me();
-		if (user) {
-			auth.set(user);
-		} else {
+		try {
+			console.log('Checking auth...');
+			const user = await api.me();
+			console.log('Auth check result:', user);
+			if (user) {
+				auth.set(user);
+			} else {
+				console.log('No user, redirecting to login');
+				goto('/login');
+			}
+		} catch (err) {
+			console.error('Auth check failed:', err);
 			goto('/login');
+		} finally {
+			loading = false;
 		}
-		loading = false;
 	});
 
 	async function handleLogout() {
@@ -206,8 +215,8 @@
 		{/if}
 
 		<!-- Main Content -->
-		<main class="flex-1 pt-16 lg:ml-0 lg:pt-0">
-			<div class="p-6 lg:p-8">
+		<main class="flex-1 min-w-0 pt-16 lg:ml-0 lg:pt-0">
+			<div class="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
 				{@render children()}
 			</div>
 		</main>

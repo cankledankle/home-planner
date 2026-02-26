@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: home-planner-postgres
+    environment:
+      POSTGRES_DB: homeplanner
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  sftpgo:
+    image: drakkan/sftpgo:v2.6
+    container_name: home-planner-sftpgo
+    ports:
+      - "2022:2022"      # SFTP port
+      - "8081:8080"      # Web admin
+    environment:
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
+      SFTPGO_DATA_PROVIDER__DRIVER: memory
+      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
+      SFTPGO_HTTPD__BINDINGS__0__ENABLE_WEB_ADMIN: "true"
+      SFTPGO_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      SFTPGO_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      SFTPGO_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      SFTPGO_R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+    volumes:
+      - sftpgo_data:/var/lib/sftpgo
+      - ./sftpgo/sftpgo.json:/etc/sftpgo/sftpgo.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: home-planner-app
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/homeplanner?sslmode=disable
+      MIGRATIONS_PATH: file:///app/migrations
+      PORT: 8080
+      FRONTEND_URL: http://localhost:8080
+      STATIC_PATH: /app/static
+      # R2 Configuration
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      # Admin seed
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME}
+      # SFTPGo Admin API
+      SFTPGO_API_URL: http://sftpgo:8080
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sftpgo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  sftpgo_data:

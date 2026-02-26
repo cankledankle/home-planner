@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
+	
 	import { toast } from 'svelte-sonner';
 	import {
 		Upload,
@@ -13,7 +13,8 @@
 		ArrowLeft,
 		RefreshCw,
 		X,
-		Check
+		Check,
+		Download
 	} from '@lucide/svelte';
 	import { previewCsvImport, importCsv, type ImportPreview, type ImportResult } from '$lib/api';
 
@@ -151,6 +152,111 @@
 			currentStep = step;
 		}
 	}
+
+	function downloadExampleCsv() {
+		// Example plan data
+		const exampleData = [
+			{
+				name: 'Abilene',
+				type: 'single_level',
+				style: 'cabin',
+				beds: 3,
+				baths: 2,
+				half_baths: 1,
+				main_sf: 1200,
+				upper_sf: 0,
+				lower_sf: 0,
+				porch_deck_sf: 400,
+				garage_sf: 480,
+				garage_apartment_sf: 0,
+				unfinished_sf: 0,
+				heated_sf: 1200,
+				total_sf: 1680,
+				notes: 'Example cabin plan with front porch'
+			},
+			{
+				name: 'Angler',
+				type: 'single_level',
+				style: 'cabin',
+				beds: 2,
+				baths: 1,
+				half_baths: 0,
+				main_sf: 750,
+				upper_sf: 0,
+				lower_sf: 0,
+				porch_deck_sf: 300,
+				garage_sf: 0,
+				garage_apartment_sf: 0,
+				unfinished_sf: 0,
+				heated_sf: 750,
+				total_sf: 1050,
+				notes: 'Compact cabin with screened porch'
+			},
+			{
+				name: 'Arrowhead Lodge',
+				type: 'multi_level',
+				style: 'lodge',
+				beds: 4,
+				baths: 3,
+				half_baths: 1,
+				main_sf: 1800,
+				upper_sf: 800,
+				lower_sf: 600,
+				porch_deck_sf: 600,
+				garage_sf: 600,
+				garage_apartment_sf: 450,
+				unfinished_sf: 200,
+				heated_sf: 2600,
+				total_sf: 3400,
+				notes: 'Spacious lodge with finished basement and garage apartment'
+			}
+		];
+
+		// Create CSV content
+		const headers = [
+			'name',
+			'type',
+			'style',
+			'beds',
+			'baths',
+			'half_baths',
+			'main_sf',
+			'upper_sf',
+			'lower_sf',
+			'porch_deck_sf',
+			'garage_sf',
+			'garage_apartment_sf',
+			'unfinished_sf',
+			'heated_sf',
+			'total_sf',
+			'notes'
+		];
+
+		const csvRows = [
+			headers.join(','),
+			...exampleData.map(row => 
+				headers.map(header => {
+					const value = row[header as keyof typeof row];
+					if (typeof value === 'string' && value.includes(',')) {
+						return `"${value.replace(/"/g, '""')}"`;
+					}
+					return value ?? '';
+				}).join(',')
+			)
+		];
+
+		const csvContent = '\uFEFF' + csvRows.join('\n');
+		const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = 'example-plans-import.csv';
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(link.href);
+
+		toast.success('Example CSV downloaded');
+	}
 </script>
 
 <div class="mx-auto max-w-4xl space-y-6">
@@ -184,10 +290,10 @@
 			{/each}
 		</div>
 		<div class="mt-2 flex justify-between text-xs text-slate-500">
-			<span>Upload</span>
-			<span>Mapping</span>
-			<span>Review</span>
-			<span>Results</span>
+			<span class="text-center w-10 sm:w-auto">Upload</span>
+			<span class="text-center w-10 sm:w-auto">Mapping</span>
+			<span class="text-center w-10 sm:w-auto">Review</span>
+			<span class="text-center w-10 sm:w-auto">Results</span>
 		</div>
 	</div>
 
@@ -207,6 +313,8 @@
 					ondrop={handleDrop}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
+					role="button"
+					tabindex="0"
 				>
 					{#if selectedFile}
 						<div class="flex flex-col items-center gap-3">
@@ -251,13 +359,23 @@
 				</div>
 
 				<div class="rounded-lg bg-slate-50 p-4">
-					<h3 class="mb-2 font-medium text-slate-900">CSV Format Requirements</h3>
-					<ul class="space-y-1 text-sm text-slate-600">
-						<li>• First row must contain column headers</li>
-						<li>• Required column: Plan Name</li>
-						<li>• Optional columns: Type, Style, Beds, Baths, Heated SF, etc.</li>
-						<li>• Maximum file size: 10MB</li>
-					</ul>
+					<div class="flex flex-col gap-4">
+						<div>
+							<h3 class="mb-2 font-medium text-slate-900">CSV Format Requirements</h3>
+							<ul class="space-y-1 text-sm text-slate-600">
+								<li>• First row must contain column headers</li>
+								<li>• Required column: Plan Name</li>
+								<li>• Optional columns: Type, Style, Beds, Baths, Heated SF, etc.</li>
+								<li>• Maximum file size: 10MB</li>
+							</ul>
+						</div>
+						<div class="flex-shrink-0">
+							<Button variant="outline" size="sm" onclick={downloadExampleCsv} class="w-full sm:w-auto">
+								<Download class="mr-2 h-4 w-4" />
+								Download Example CSV
+							</Button>
+						</div>
+					</div>
 				</div>
 
 				<div class="flex justify-end">
@@ -284,8 +402,8 @@
 
 				<!-- Import Mode -->
 				<div class="space-y-2">
-					<Label>Import Mode</Label>
-					<div class="flex gap-4">
+					<span class="text-sm font-medium">Import Mode</span>
+					<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 {importMode ===
 							'create'
@@ -334,18 +452,18 @@
 
 					<div class="space-y-3">
 						{#each preview?.columns ?? [] as column}
-							<div class="flex items-center gap-4 rounded-lg border border-slate-200 p-4">
-								<div class="flex-1">
-									<p class="font-medium text-slate-900">{column}</p>
-									<p class="text-sm text-slate-500">
+							<div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:gap-4">
+								<div class="flex-1 min-w-0">
+									<p class="font-medium text-slate-900 truncate">{column}</p>
+									<p class="text-sm text-slate-500 truncate">
 										Example: {preview?.preview[0]?.[column] ?? 'N/A'}
 									</p>
 								</div>
-								<div class="flex items-center gap-2">
-									<span class="text-slate-400">→</span>
+								<div class="flex items-center gap-2 flex-shrink-0">
+									<span class="text-slate-400 hidden sm:inline">→</span>
 									<select
 										bind:value={columnMapping[column]}
-										class="min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+										class="w-full sm:w-auto sm:min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
 									>
 										<option value="">— Skip this column —</option>
 										{#each planFields as field}
@@ -356,7 +474,7 @@
 										{/each}
 									</select>
 									{#if columnMapping[column] === 'name'}
-										<span class="rounded-full bg-green-100 p-1">
+										<span class="rounded-full bg-green-100 p-1 flex-shrink-0">
 											<Check class="h-4 w-4 text-green-600" />
 										</span>
 									{/if}

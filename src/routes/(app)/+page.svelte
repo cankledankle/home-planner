@@ -32,8 +32,8 @@
 				getActivities({ limit: 5 })
 			]);
 			stats = statsData;
-			recentPlans = plansData;
-			recentActivity = activityData.data;
+			recentPlans = plansData ?? [];
+			recentActivity = activityData?.data ?? [];
 		} catch (err) {
 			toast.error('Failed to load dashboard data');
 		} finally {
@@ -152,7 +152,7 @@
 					</a>
 				</div>
 				<div class="divide-y divide-slate-100">
-					{#if recentPlans.length === 0}
+					{#if !recentPlans?.length}
 						<div class="p-8 text-center text-slate-500">
 							No plans yet. Create your first plan to get started.
 						</div>
@@ -211,7 +211,7 @@
 					</a>
 				</div>
 				<div class="divide-y divide-slate-100">
-					{#if recentActivity.length === 0}
+					{#if !recentActivity?.length}
 						<div class="p-8 text-center text-slate-500">No recent activity.</div>
 					{:else}
 						{#each recentActivity as activity}

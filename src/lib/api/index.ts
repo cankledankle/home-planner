@@ -8,7 +8,9 @@ import type {
 	File,
 	Activity,
 	PaginatedResponse,
-	LoginCredentials
+	LoginCredentials,
+	SFTPCredentials,
+	SFTPStatus
 } from '$lib/types';
 
 export async function login(credentials: LoginCredentials): Promise<User> {
@@ -29,8 +31,8 @@ export async function getUsers(): Promise<User[]> {
 
 export async function createUser(
 	user: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string }
-): Promise<User> {
-	return api.post<User>('/users', user);
+): Promise<User & { sftp_credentials?: SFTPCredentials }> {
+	return api.post<User & { sftp_credentials?: SFTPCredentials }>('/users', user);
 }
 
 export async function updateUser(id: string, user: Partial<User>): Promise<User> {
@@ -82,7 +84,17 @@ export async function getPlans(params: ListPlansParams = {}): Promise<PaginatedR
 		}
 	});
 	const query = searchParams.toString();
-	return api.get<PaginatedResponse<Plan>>(`/plans${query ? `?${query}` : ''}`);
+	// Use raw fetch to get full paginated response with meta
+	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+	const response = await fetch(`${API_BASE}/plans${query ? `?${query}` : ''}`, {
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error?.message || 'Failed to load plans');
+	}
+	const data = await response.json();
+	return data;
 }
 
 export async function getPlan(id: string): Promise<PlanWithFiles> {
@@ -137,7 +149,17 @@ export async function getActivities(
 		}
 	});
 	const query = searchParams.toString();
-	return api.get<PaginatedResponse<Activity>>(`/activity${query ? `?${query}` : ''}`);
+	// Use raw fetch to get full paginated response with meta
+	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+	const response = await fetch(`${API_BASE}/activity${query ? `?${query}` : ''}`, {
+		credentials: 'include'
+	});
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error?.message || 'Failed to load activities');
+	}
+	const data = await response.json();
+	return data;
 }
 
 export async function getPlanActivities(
@@ -145,9 +167,18 @@ export async function getPlanActivities(
 	page: number = 1,
 	limit: number = 50
 ): Promise<PaginatedResponse<Activity>> {
-	return api.get<PaginatedResponse<Activity>>(
-		`/plans/${planId}/activity?page=${page}&limit=${limit}`
+	// Use raw fetch to get full paginated response with meta
+	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+	const response = await fetch(
+		`${API_BASE}/plans/${planId}/activity?page=${page}&limit=${limit}`,
+		{ credentials: 'include' }
 	);
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error?.message || 'Failed to load plan activities');
+	}
+	const data = await response.json();
+	return data;
 }
 
 export async function getPlanFiles(planId: string): Promise<{
@@ -168,9 +199,8 @@ export async function getFileUrl(fileId: string): Promise<{ url: string; expires
 	return api.get<{ url: string; expires_at: string }>(`/files/${fileId}/url`);
 }
 
-export async function uploadWebsiteFile(planId: string, slot: string, file: File): Promise<File> {
+export async function uploadWebsiteFile(planId: string, slot: string, file: globalThis.File): Promise<File> {
 	const formData = new FormData();
-	// @ts-expect-error - File extends Blob, TypeScript doesn't recognize this
 	formData.append('file', file);
 	formData.append('slot', slot);
 
@@ -193,11 +223,10 @@ export async function uploadWebsiteFile(planId: string, slot: string, file: File
 export async function uploadFiles(
 	planId: string,
 	category: string,
-	files: File[]
+	files: globalThis.File[]
 ): Promise<File[]> {
 	const formData = new FormData();
 	files.forEach((file) => {
-		// @ts-expect-error - File extends Blob, TypeScript doesn't recognize this
 		formData.append('files', file);
 	});
 	formData.append('category', category);
@@ -245,9 +274,8 @@ export interface ImportResult {
 	}>;
 }
 
-export async function previewCsvImport(file: File): Promise<ImportPreview> {
+export async function previewCsvImport(file: globalThis.File): Promise<ImportPreview> {
 	const formData = new FormData();
-	// @ts-expect-error - File extends Blob
 	formData.append('file', file);
 
 	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -266,9 +294,8 @@ export async function previewCsvImport(file: File): Promise<ImportPreview> {
 	return data.data;
 }
 
-export async function importCsv(file: File, options: ImportOptions): Promise<ImportResult> {
+export async function importCsv(file: globalThis.File, options: ImportOptions): Promise<ImportResult> {
 	const formData = new FormData();
-	// @ts-expect-error - File extends Blob
 	formData.append('file', file);
 	formData.append('mode', options.mode);
 	formData.append('mapping', JSON.stringify(options.mapping));
@@ -293,9 +320,22 @@ export async function importCsv(file: File, options: ImportOptions): Promise<Imp
 }
 
 // Export API
+import {
+	EXPORT_ENDPOINTS,
+	EXPORT_PRESETS,
+	EXPORT_FIELDS,
+	EXPORT_PRESET_FIELDS,
+	isValidExportPreset,
+	type ExportPreset,
+	type ExportField
+} from './contracts';
+
 export type ExportType = 'csv' | 'zip';
-export type ExportPreset = 'wp-all-import' | 'general' | 'minimal' | 'custom';
+export type { ExportPreset, ExportField };
 export type ExportScope = 'all' | 'selected' | 'filtered';
+
+// Re-export contract constants
+export { EXPORT_ENDPOINTS, EXPORT_PRESETS, EXPORT_FIELDS, EXPORT_PRESET_FIELDS, isValidExportPreset };
 
 export interface ExportOptions {
 	type: ExportType;
@@ -343,7 +383,8 @@ export async function exportData(options: ExportOptions): Promise<Blob> {
 	}
 
 	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/export?${params.toString()}`, {
+	const endpoint = options.type === 'csv' ? '/export/csv' : '/export/zip';
+	const response = await fetch(`${API_BASE}${endpoint}?${params.toString()}`, {
 		method: 'GET',
 		credentials: 'include'
 	});
@@ -354,4 +395,44 @@ export async function exportData(options: ExportOptions): Promise<Blob> {
 	}
 
 	return response.blob();
+}
+
+// SFTP API
+export async function getSFTPStatus(): Promise<SFTPStatus> {
+	return api.get<SFTPStatus>('/sftp/status');
+}
+
+export async function getUserSFTP(userId: string): Promise<SFTPCredentials | null> {
+	try {
+		return await api.get<SFTPCredentials>(`/users/${userId}/sftp`);
+	} catch (error: any) {
+		if (error?.error?.code === 'NOT_FOUND') {
+			return null;
+		}
+		throw error;
+	}
+}
+
+export async function generateSFTP(userId: string, permission: 'read' | 'readwrite'): Promise<SFTPCredentials> {
+	return api.post<SFTPCredentials>(`/users/${userId}/sftp`, { permission });
+}
+
+export async function rotateSFTP(userId: string): Promise<SFTPCredentials> {
+	return api.put<SFTPCredentials>(`/users/${userId}/sftp/rotate`, {});
+}
+
+export async function revokeSFTP(userId: string): Promise<void> {
+	return api.put<void>(`/users/${userId}/sftp/revoke`, {});
+}
+
+export async function updateSFTPPermission(userId: string, permission: 'read' | 'readwrite'): Promise<void> {
+	return api.put<void>(`/users/${userId}/sftp/permission`, { permission });
+}
+
+export async function deleteSFTP(userId: string): Promise<void> {
+	return api.delete<void>(`/users/${userId}/sftp`);
+}
+
+export async function listAllSFTP(): Promise<SFTPCredentials[]> {
+	return api.get<SFTPCredentials[]>('/sftp/credentials');
 }

@@ -14,7 +14,10 @@
 		type ExportOptions,
 		type ExportType,
 		type ExportPreset,
-		type ExportScope
+		type ExportScope,
+		EXPORT_PRESETS,
+		EXPORT_PRESET_FIELDS,
+		EXPORT_FIELDS
 	} from '$lib/api';
 	import { toast } from 'svelte-sonner';
 	import {
@@ -53,68 +56,54 @@
 	const exportPresets: { id: ExportPreset; name: string; description: string; fields: string[] }[] =
 		[
 			{
-				id: 'wp-all-import',
+				id: EXPORT_PRESETS.wpAllImport,
 				name: 'WP All Import',
-				description: 'Optimized for WordPress All Import plugin',
-				fields: [
-					'id',
-					'name',
-					'slug',
-					'status',
-					'type',
-					'style',
-					'beds',
-					'baths',
-					'heated_sf',
-					'poster_url'
-				]
+				description: 'Optimized for WordPress All Import plugin with image slots',
+				fields: EXPORT_PRESET_FIELDS[EXPORT_PRESETS.wpAllImport]
 			},
 			{
-				id: 'general',
+				id: EXPORT_PRESETS.general,
 				name: 'General',
 				description: 'Standard export with all metadata',
-				fields: [
-					'id',
-					'name',
-					'slug',
-					'status',
-					'type',
-					'style',
-					'beds',
-					'baths',
-					'heated_sf',
-					'total_sf',
-					'notes'
-				]
+				fields: EXPORT_PRESET_FIELDS[EXPORT_PRESETS.general]
 			},
 			{
-				id: 'minimal',
+				id: EXPORT_PRESETS.minimal,
 				name: 'Minimal',
 				description: 'Basic plan info only',
-				fields: ['id', 'name', 'slug', 'status']
+				fields: EXPORT_PRESET_FIELDS[EXPORT_PRESETS.minimal]
 			}
 		];
 
 	const allFields = [
-		{ name: 'id', label: 'ID' },
-		{ name: 'name', label: 'Name' },
-		{ name: 'slug', label: 'Slug' },
-		{ name: 'status', label: 'Status' },
-		{ name: 'type', label: 'Type' },
-		{ name: 'style', label: 'Style' },
-		{ name: 'beds', label: 'Beds' },
-		{ name: 'baths', label: 'Baths' },
-		{ name: 'half_baths', label: 'Half Baths' },
-		{ name: 'main_sf', label: 'Main SF' },
-		{ name: 'upper_sf', label: 'Upper SF' },
-		{ name: 'lower_sf', label: 'Lower SF' },
-		{ name: 'porch_deck_sf', label: 'Porch/Deck SF' },
-		{ name: 'garage_sf', label: 'Garage SF' },
-		{ name: 'heated_sf', label: 'Heated SF' },
-		{ name: 'total_sf', label: 'Total SF' },
-		{ name: 'notes', label: 'Notes' },
-		{ name: 'poster_url', label: 'Poster URL' },
-		{ name: 'render_front_url', label: 'Render URL' }
+		{ name: EXPORT_FIELDS.id, label: 'ID' },
+		{ name: EXPORT_FIELDS.name, label: 'Name' },
+		{ name: EXPORT_FIELDS.slug, label: 'Slug' },
+		{ name: EXPORT_FIELDS.status, label: 'Status' },
+		{ name: EXPORT_FIELDS.type, label: 'Type' },
+		{ name: EXPORT_FIELDS.style, label: 'Style' },
+		{ name: EXPORT_FIELDS.beds, label: 'Beds' },
+		{ name: EXPORT_FIELDS.baths, label: 'Baths' },
+		{ name: EXPORT_FIELDS.halfBaths, label: 'Half Baths' },
+		{ name: EXPORT_FIELDS.mainSf, label: 'Main SF' },
+		{ name: EXPORT_FIELDS.upperSf, label: 'Upper SF' },
+		{ name: EXPORT_FIELDS.lowerSf, label: 'Lower SF' },
+		{ name: EXPORT_FIELDS.porchDeckSf, label: 'Porch/Deck SF' },
+		{ name: EXPORT_FIELDS.garageSf, label: 'Garage SF' },
+		{ name: EXPORT_FIELDS.garageApartmentSf, label: 'Garage Apartment SF' },
+		{ name: EXPORT_FIELDS.unfinishedSf, label: 'Unfinished SF' },
+		{ name: EXPORT_FIELDS.heatedSf, label: 'Heated SF' },
+		{ name: EXPORT_FIELDS.totalSf, label: 'Total SF' },
+		{ name: EXPORT_FIELDS.notes, label: 'Notes' },
+		{ name: EXPORT_FIELDS.renderFront, label: 'Render Front' },
+		{ name: EXPORT_FIELDS.elevationFront, label: 'Elevation Front' },
+		{ name: EXPORT_FIELDS.elevationLeft, label: 'Elevation Left' },
+		{ name: EXPORT_FIELDS.elevationRear, label: 'Elevation Rear' },
+		{ name: EXPORT_FIELDS.elevationRight, label: 'Elevation Right' },
+		{ name: EXPORT_FIELDS.floorPlanMain, label: 'Floor Plan Main' },
+		{ name: EXPORT_FIELDS.floorPlanUpper, label: 'Floor Plan Upper' },
+		{ name: EXPORT_FIELDS.floorPlanLower, label: 'Floor Plan Lower' },
+		{ name: EXPORT_FIELDS.poster, label: 'Poster' }
 	];
 
 	const categories = [
@@ -157,7 +146,7 @@
 	}
 
 	async function handleExport() {
-		if (exportType === 'csv' && selectedFields.length === 0) {
+		if (exportType === 'csv' && exportPreset === 'custom' && selectedFields.length === 0) {
 			toast.error('Please select at least one field to export');
 			return;
 		}
@@ -173,7 +162,8 @@
 				scope: exportScope,
 				...(exportType === 'csv' && {
 					preset: exportPreset,
-					fields: selectedFields
+					// Only send fields for custom preset - WP All Import handles its own fields
+					...(exportPreset === 'custom' && { fields: selectedFields })
 				}),
 				...(exportType === 'zip' && {
 					categories: selectedCategories
@@ -254,7 +244,7 @@
 		<div class="space-y-6 py-4">
 			<!-- Export Type Selection -->
 			<div>
-				<label class="mb-3 block text-sm font-medium text-slate-700">Export Type</label>
+				<span class="mb-3 block text-sm font-medium text-slate-700">Export Type</span>
 				<div class="grid grid-cols-2 gap-3">
 					<button
 						class="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors {exportType ===
@@ -297,7 +287,7 @@
 
 			<!-- Scope Selection -->
 			<div>
-				<label class="mb-3 block text-sm font-medium text-slate-700">Export Scope</label>
+				<span class="mb-3 block text-sm font-medium text-slate-700">Export Scope</span>
 				<div class="space-y-2">
 					<button
 						class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors {exportScope ===
@@ -387,7 +377,7 @@
 			{#if exportType === 'csv'}
 				<!-- CSV Presets -->
 				<div>
-					<label class="mb-3 block text-sm font-medium text-slate-700">Export Preset</label>
+					<span class="mb-3 block text-sm font-medium text-slate-700">Export Preset</span>
 					<div class="space-y-2">
 						{#each exportPresets as preset}
 							<button
@@ -451,9 +441,9 @@
 				<!-- Custom Field Selection -->
 				{#if exportPreset === 'custom'}
 					<div>
-						<label class="mb-3 block text-sm font-medium text-slate-700">
-							Select Fields ({selectedFields.length} selected)
-						</label>
+<span class="mb-3 block text-sm font-medium text-slate-700">
+						Select Fields ({selectedFields.length} selected)
+					</span>
 						<div
 							class="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-3"
 						>
@@ -474,9 +464,9 @@
 			{#if exportType === 'zip'}
 				<!-- ZIP Category Selection -->
 				<div>
-					<label class="mb-3 block text-sm font-medium text-slate-700">
+					<span class="mb-3 block text-sm font-medium text-slate-700">
 						File Categories ({selectedCategories.length} selected)
-					</label>
+					</span>
 					<div class="space-y-2">
 						{#each categories as category}
 							<label

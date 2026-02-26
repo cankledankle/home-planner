@@ -35,6 +35,9 @@
 	import { toast } from 'svelte-sonner';
 	import type { Plan, PaginatedResponse } from '$lib/types';
 	import ExportModal from '$lib/components/plan/ExportModal.svelte';
+	import EmptyState from '$lib/components/ui/empty-state/EmptyState.svelte';
+	import TableSkeleton from '$lib/components/ui/skeleton/TableSkeleton.svelte';
+	import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
 
 	// View state
 	let viewMode: 'table' | 'grid' = $state('table');
@@ -167,7 +170,7 @@
 		if (allSelected) {
 			selectedIds = new Set();
 		} else {
-			selectedIds = new Set(plans?.data.map((p) => p.id) ?? []);
+			selectedIds = new Set(plans?.data?.map((p) => p.id) ?? []);
 		}
 	}
 
@@ -274,8 +277,8 @@
 			</p>
 		</div>
 		<Dialog bind:open={newPlanOpen}>
-			<DialogTrigger>
-				<Button>
+			<DialogTrigger class="w-full sm:w-auto">
+				<Button class="w-full sm:w-auto">
 					<Plus class="mr-2 h-4 w-4" />
 					New Plan
 				</Button>
@@ -418,7 +421,7 @@
 	<!-- Bulk Action Bar -->
 	{#if selectedCount > 0}
 		<div
-			class="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3 shadow-sm"
+			class="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 shadow-sm"
 		>
 			<div class="flex items-center gap-3">
 				<Checkbox
@@ -430,7 +433,7 @@
 					{selectedCount} selected
 				</span>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex flex-wrap items-center gap-2">
 				<Button
 					variant="outline"
 					size="sm"
@@ -439,7 +442,7 @@
 					disabled={bulkActionLoading}
 				>
 					<Flag class="mr-1.5 h-3.5 w-3.5" />
-					Flag
+					<span class="hidden sm:inline">Flag</span>
 				</Button>
 				<Button
 					variant="outline"
@@ -449,9 +452,9 @@
 					disabled={bulkActionLoading}
 				>
 					<FlagOff class="mr-1.5 h-3.5 w-3.5" />
-					Unflag
+					<span class="hidden sm:inline">Unflag</span>
 				</Button>
-				<div class="mx-1 h-6 w-px bg-blue-200"></div>
+				<div class="mx-1 h-6 w-px bg-blue-200 hidden sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
@@ -460,7 +463,7 @@
 					disabled={bulkActionLoading}
 				>
 					<Download class="mr-1.5 h-3.5 w-3.5" />
-					Export
+					<span class="hidden sm:inline">Export</span>
 				</Button>
 				<Button
 					variant="outline"
@@ -469,9 +472,9 @@
 					disabled={bulkActionLoading}
 				>
 					<Archive class="mr-1.5 h-3.5 w-3.5" />
-					Export ZIP
+					<span class="hidden sm:inline">ZIP</span>
 				</Button>
-				<div class="mx-1 h-6 w-px bg-blue-200"></div>
+				<div class="mx-1 h-6 w-px bg-blue-200 hidden sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
@@ -480,7 +483,7 @@
 					disabled={bulkActionLoading}
 				>
 					<Trash2 class="mr-1.5 h-3.5 w-3.5" />
-					Delete
+					<span class="hidden sm:inline">Delete</span>
 				</Button>
 				<Button variant="ghost" size="sm" onclick={clearSelection} disabled={bulkActionLoading}>
 					<X class="h-4 w-4" />
@@ -491,36 +494,25 @@
 
 	<!-- Content -->
 	{#if loading}
-		<div class="flex h-64 items-center justify-center">
-			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-slate-900"></div>
+		<div class="rounded-lg border border-slate-200 bg-white">
+			<TableSkeleton count={5} />
 		</div>
-	{:else if plans?.data.length === 0}
-		<div class="rounded-lg border border-slate-200 bg-white p-12 text-center">
-			<div
-				class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100"
-			>
-				<Search class="h-8 w-8 text-slate-400" />
-			</div>
-			<h3 class="mb-2 text-lg font-medium text-slate-900">
-				{hasActiveFilters ? 'No plans match your filters' : 'No plans yet'}
-			</h3>
-			<p class="mb-4 text-slate-600">
-				{hasActiveFilters
-					? "Try adjusting your search or filters to find what you're looking for."
-					: 'Get started by creating your first home plan.'}
-			</p>
-			{#if hasActiveFilters}
-				<Button variant="outline" onclick={clearFilters}>Clear Filters</Button>
-			{:else}
-				<Button onclick={() => (newPlanOpen = true)}>Create First Plan</Button>
-			{/if}
-		</div>
+	{:else if plans?.data?.length === 0}
+		<EmptyState
+			icon={Search}
+			title={hasActiveFilters ? 'No plans match your filters' : 'No plans yet'}
+			description={hasActiveFilters
+				? "Try adjusting your search or filters to find what you're looking for."
+				: 'Get started by creating your first home plan.'}
+			actionLabel={hasActiveFilters ? 'Clear Filters' : 'Create First Plan'}
+			onAction={hasActiveFilters ? clearFilters : () => newPlanOpen = true}
+		/>
 	{:else}
 		{#if viewMode === 'table'}
-			<!-- Table View -->
-			<div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-				<div class="overflow-x-auto">
-					<table class="w-full text-left text-sm">
+			<!-- Table View - isolated overflow container -->
+			<div class="relative rounded-lg border border-slate-200 bg-white">
+				<div class="overflow-x-auto" style="max-width: 100vw;">
+					<table class="min-w-[900px] text-left text-sm">
 						<thead class="border-b border-slate-200 bg-slate-50 font-medium text-slate-600">
 							<tr>
 								<th class="w-10 px-4 py-3">
@@ -692,15 +684,15 @@
 		{/if}
 
 		<!-- Pagination -->
-		{#if plans && plans.meta.total_pages > 1}
-			<div class="flex items-center justify-between pt-4">
-				<p class="text-sm text-slate-600">
+		{#if plans?.meta && plans.meta.total_pages > 1}
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4">
+				<p class="text-sm text-slate-600 text-center sm:text-left">
 					Showing {(plans.meta.page - 1) * plans.meta.limit + 1} - {Math.min(
 						plans.meta.page * plans.meta.limit,
 						plans.meta.total
 					)} of {plans.meta.total} plans
 				</p>
-				<div class="flex items-center gap-2">
+				<div class="flex items-center justify-center gap-2">
 					<Button
 						variant="outline"
 						size="sm"
@@ -708,7 +700,7 @@
 						onclick={() => currentPage--}
 					>
 						<ChevronLeft class="mr-1 h-4 w-4" />
-						Previous
+						<span class="hidden sm:inline">Previous</span>
 					</Button>
 					<span class="px-2 text-sm text-slate-600">
 						Page {plans.meta.page} of {plans.meta.total_pages}
@@ -719,7 +711,7 @@
 						disabled={plans.meta.page === plans.meta.total_pages}
 						onclick={() => currentPage++}
 					>
-						Next
+						<span class="hidden sm:inline">Next</span>
 						<ChevronRight class="ml-1 h-4 w-4" />
 					</Button>
 				</div>
@@ -729,26 +721,16 @@
 </div>
 
 <!-- Bulk Delete Confirmation Dialog -->
-<Dialog bind:open={confirmDeleteOpen}>
-	<DialogContent>
-		<DialogHeader>
-			<DialogTitle class="flex items-center gap-2 text-red-600">
-				<Trash2 class="h-5 w-5" />
-				Delete {confirmDeleteCount} Plan{confirmDeleteCount === 1 ? '' : 's'}?
-			</DialogTitle>
-			<DialogDescription>
-				This action cannot be undone. These plans will be permanently removed from the system.
-			</DialogDescription>
-		</DialogHeader>
-		<DialogFooter class="gap-2 sm:gap-0">
-			<Button variant="outline" onclick={() => (confirmDeleteOpen = false)}>Cancel</Button>
-			<Button variant="destructive" onclick={confirmBulkDelete}>
-				<Trash2 class="mr-2 h-4 w-4" />
-				Delete
-			</Button>
-		</DialogFooter>
-	</DialogContent>
-</Dialog>
+<ConfirmationDialog
+	bind:open={confirmDeleteOpen}
+	title="Delete {confirmDeleteCount} Plan{confirmDeleteCount === 1 ? '' : 's'}?"
+	description="This action cannot be undone. These plans will be permanently removed from the system."
+	confirmLabel="Delete"
+	cancelLabel="Cancel"
+	confirmVariant="destructive"
+	onConfirm={confirmBulkDelete}
+	onCancel={() => confirmDeleteOpen = false}
+/>
 
 <!-- Export Modal -->
 <ExportModal

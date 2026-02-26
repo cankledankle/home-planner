@@ -15,15 +15,20 @@
 		e.preventDefault();
 		error = '';
 		loading = true;
+		console.log('Login attempt with:', email);
 
 		try {
 			const user = await api.login({ email, password });
+			console.log('Login successful:', user);
 			auth.set(user);
+			console.log('Auth set, navigating to dashboard...');
 			toast.success('Welcome back!', {
 				description: `Logged in as ${user.name}`
 			});
-			goto('/');
+			await goto('/');
+			console.log('Navigation complete');
 		} catch (err) {
+			console.error('Login failed:', err);
 			error = err instanceof Error ? err.message : 'Login failed';
 			toast.error('Login failed', {
 				description: error

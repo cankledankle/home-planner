@@ -95,6 +95,9 @@
 
 - [x] `GET /api/export/csv` — CSV export
   - [x] WP All Import preset
+    - [x] Includes plan metadata fields
+    - [x] Includes image slot columns (Render Front, Elevation Front, Elevation Left, Elevation Rear, Elevation Right, Floor Plan Main, Floor Plan Upper, Floor Plan Lower, Poster)
+    - [x] Matches format of neh-home-plans.csv
   - [x] General preset
   - [x] Custom field selection
   - [x] Filter by plan IDs
@@ -207,7 +210,7 @@
 ### 7.6 Settings Page
 
 - [x] Users management — list, create, edit, delete
-- [ ] SFTP credentials per user — generate, revoke, permission level
+- [x] SFTP credentials per user — generate, revoke, permission level
 - [x] Export preset reference
 
 ---
@@ -223,41 +226,41 @@
 
 ## Phase 9 — SFTPGo Integration
 
-- [ ] SFTPGo container in Docker Compose
-- [ ] SFTPGo configured with R2 as storage backend
-- [ ] Go service layer wrapping SFTPGo admin API
-- [ ] Create SFTP user when app user is created
-- [ ] Delete SFTP user when app user is deleted
-- [ ] Generate / rotate credentials endpoint
-- [ ] Revoke credentials endpoint
-- [ ] Permission level (read / read+write) management
-- [ ] SFTP credentials display in Settings UI
+- [x] SFTPGo container in Docker Compose
+- [x] SFTPGo configured with R2 as storage backend
+- [x] Go service layer wrapping SFTPGo admin API
+- [x] Create SFTP user when app user is created
+- [x] Delete SFTP user when app user is deleted
+- [x] Generate / rotate credentials endpoint
+- [x] Revoke credentials endpoint
+- [x] Permission level (read / read+write) management
+- [x] SFTP credentials display in Settings UI
 
 ---
 
 ## Phase 10 — Docker & Deployment
 
-- [ ] Backend Dockerfile
-- [ ] Frontend Dockerfile
-- [ ] Multi-stage Dockerfile combining both
-- [ ] docker-compose.yml — production
-- [ ] docker-compose.dev.yml — development dependencies only
-- [ ] .env.example — all required variables documented
-- [ ] Go server configured to serve built SvelteKit static files
-- [ ] Health check endpoint confirmed working in container
-- [ ] Test full production build locally
-- [ ] Confirm migrations run on container startup
+- [x] Backend Dockerfile
+- [x] Frontend Dockerfile
+- [x] Multi-stage Dockerfile combining both
+- [x] docker-compose.yml — production
+- [x] docker-compose.dev.yml — development dependencies only
+- [x] .env.example — all required variables documented
+- [x] Go server configured to serve built SvelteKit static files
+- [x] Health check endpoint confirmed working in container
+- [x] Test full production build locally
+- [x] Confirm migrations run on container startup
 
 ---
 
 ## Phase 11 — Polish & QA
 
-- [ ] All empty states implemented
-- [ ] All error states implemented
-- [ ] All loading states / skeletons implemented
-- [ ] Confirm all destructive actions have confirmation dialogs
-- [ ] Unsaved changes warnings on plan edit
-- [ ] Mobile layout tested
+- [x] All empty states implemented
+- [x] All error states implemented
+- [x] All loading states / skeletons implemented
+- [x] Confirm all destructive actions have confirmation dialogs
+- [x] Unsaved changes warnings on plan edit
+- [x] Mobile layout tested
 - [ ] Test full CSV import with real data
 - [ ] Test full CSV export — WP All Import preset verified
 - [ ] Test ZIP export with large file set
@@ -265,6 +268,132 @@
 - [ ] Test auth flow — login, refresh, logout, expired token
 - [ ] Test role restrictions — editor cannot access admin routes
 - [ ] Cross-browser check — Chrome, Firefox, Safari
+
+---
+
+## Phase 12 — Post-Import Bulk Image Assignment
+
+### 12.1 Backend API
+
+- [ ] Modify `POST /api/import/csv` to return created plan IDs in response
+- [ ] Create `GET /api/import/recent` endpoint — fetch recently imported plans (last 24h)
+- [ ] Create `POST /api/plans/bulk-files` endpoint — upload images to multiple plans
+  - [ ] Accept array of `{plan_id, slot, file}` objects
+  - [ ] Validate all plan IDs exist
+  - [ ] Validate slot names are valid website slots
+  - [ ] Process each file with image optimization pipeline
+  - [ ] Return per-file success/failure results
+
+### 12.2 Frontend - Import Flow Enhancement
+
+- [ ] Add Step 5 "Upload Images" to import wizard
+- [ ] Create bulk image assignment page component
+  - [ ] Grid view of all imported plans from CSV
+  - [ ] Each plan card shows: name, slug, status, empty slot placeholders
+  - [ ] Bulk drag-drop upload zone at top
+  - [ ] Smart filename matching (optional) — match `{plan-slug}--{slot}` pattern
+  - [ ] Manual slot assignment per uploaded file
+  - [ ] Progress tracking per plan
+  - [ ] Completion summary
+
+### 12.3 Smart Matching Logic
+
+- [ ] Parse filenames for pattern: `{plan-slug}--{slot-type}--{view}` or `{plan-slug}--{slot}`
+- [ ] Auto-suggest slot assignments based on filename
+- [ ] Show match confidence score
+- [ ] Allow manual override of auto-matches
+- [ ] Support batch assignment — select multiple files, assign to same slot across different plans
+
+---
+
+## Phase 13 — Image Optimization & Processing
+
+### 13.1 Image Processing Service
+
+- [ ] Add image processing library to Go backend
+  - [ ] Add `github.com/disintegration/imaging` dependency
+- [ ] Create `internal/processing/image.go` service
+  - [ ] `ProcessWebsiteImage()` — resize, compress, format conversion
+  - [ ] `ProcessReferenceFile()` — basic validation only
+  - [ ] `DetectTransparency()` — check if PNG has alpha channel
+  - [ ] `ConvertPNGToJPEG()` — white background replacement
+
+### 13.2 Size Limits & Constraints
+
+**Website Images (render, elevations, floor plans, poster):**
+- [ ] Max file size: 5MB (down from 50MB)
+- [ ] Max dimensions: 4000px width/height (4K display)
+- [ ] Output format: JPEG only (no WebP)
+- [ ] JPEG quality: 90%
+- [ ] Strip all metadata (EXIF)
+
+**Poster Images:**
+- [ ] Max file size: 5MB
+- [ ] Target: 8x12 print @ 300dpi = 2400x3600px
+- [ ] Max dimensions: 4000px
+- [ ] JPEG quality: 90%
+
+**Reference/Technical/3D Files:**
+- [ ] Max file size: 50MB (down from 500MB)
+- [ ] No image processing, just validation
+
+### 13.3 Naming Constraints & Standardization
+
+- [ ] Create filename validation utility
+  - [ ] Pattern: `{plan-slug}--{slot-type}--{view}.{ext}` or `{plan-slug}--{slot}.{ext}`
+  - [ ] Valid extensions: .jpg, .jpeg, .png
+  - [ ] Max filename length: 100 characters
+  - [ ] Lowercase only, no spaces
+  - [ ] Allowed characters: a-z, 0-9, hyphen, underscore
+- [ ] Auto-rename uploaded files to match convention
+- [ ] Storage key format: `plans/{slug}/website/{slot}.jpg`
+
+### 13.4 PNG/JPEG Duplicate Handling
+
+- [ ] When PNG uploaded for website slot:
+  - [ ] Detect if transparency exists
+  - [ ] If no transparency: convert to JPEG with white background, use JPEG for website
+  - [ ] If transparency exists: reject for website slots (show error)
+  - [ ] Always keep original PNG in "other" category if uploaded
+- [ ] When JPEG exists and PNG uploaded:
+  - [ ] Use JPEG for website slot
+  - [ ] Store PNG in "other" category
+  - [ ] Show info message: "Using JPEG for website, PNG saved to Other Files"
+- [ ] No auto-deletion — keep both formats in storage
+
+### 13.5 Processing Pipeline
+
+**Website Image Upload Flow:**
+1. Receive file
+2. Validate file type (image/jpeg, image/png only)
+3. Validate file size (≤5MB after processing)
+4. Detect format and transparency (PNG only)
+5. Resize if >4000px dimension
+6. Convert to JPEG:
+   - PNG with transparency → white background
+   - PNG without transparency → direct conversion
+   - JPEG → re-encode at 90% quality
+7. Strip metadata
+8. Validate output size ≤5MB
+9. Upload to R2
+10. Save file record
+
+**Reference File Upload Flow:**
+1. Receive file
+2. Validate file size ≤50MB
+3. Upload to R2 as-is
+4. Save file record
+
+### 13.6 Frontend Updates
+
+- [ ] Update upload components to show new size limits
+- [ ] Show processing progress indicator
+- [ ] Display warnings for:
+  - [ ] Files >5MB will be compressed
+  - [ ] PNGs with transparency cannot be used for website (will be stored as "other")
+  - [ ] Original filename will be standardized
+- [ ] Add file size preview before upload
+- [ ] Show optimization savings (original vs processed size)
 
 ---
 
@@ -282,3 +411,5 @@
 10. Phase 9 — SFTPGo (last backend feature, most isolated)
 11. Phase 10 — Docker, test full build
 12. Phase 11 — polish and QA
+13. Phase 13 — Image optimization (new uploads only, affects Phase 3/12)
+14. Phase 12 — Post-import bulk image assignment

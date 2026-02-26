@@ -10,7 +10,7 @@ export class ApiClient {
 		this.baseUrl = baseUrl;
 	}
 
-	private async fetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+	private async fetch(endpoint: string, options: RequestInit = {}, skipAuthRetry: boolean = false): Promise<Response> {
 		const url = `${this.baseUrl}${endpoint}`;
 
 		const defaultOptions: RequestInit = {
@@ -23,7 +23,8 @@ export class ApiClient {
 
 		const response = await fetch(url, { ...defaultOptions, ...options });
 
-		if (response.status === 401) {
+		// Only try to refresh token for non-auth endpoints
+		if (response.status === 401 && !skipAuthRetry) {
 			const refreshed = await this.refreshToken();
 			if (refreshed) {
 				return this.fetch(endpoint, options);
@@ -53,7 +54,7 @@ export class ApiClient {
 		const response = await this.fetch('/auth/login', {
 			method: 'POST',
 			body: JSON.stringify(credentials)
-		});
+		}, true); // Skip auth retry for login
 
 		if (!response.ok) {
 			const error: ApiError = await response.json();

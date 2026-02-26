@@ -6,6 +6,7 @@
 	import { api } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
 	import { Toaster, toast } from 'svelte-sonner';
+	import ThemeToggle from '$lib/components/ui/theme-toggle/ThemeToggle.svelte';
 	import {
 		LayoutDashboard,
 		Home,
@@ -71,15 +72,15 @@
 <Toaster position="top-right" richColors />
 
 {#if loading}
-	<div class="flex min-h-screen items-center justify-center bg-slate-50">
-		<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-slate-900"></div>
+	<div class="flex min-h-screen items-center justify-center bg-background">
+		<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-foreground"></div>
 	</div>
 {:else if $auth}
-	<div class="flex min-h-screen">
+	<div class="flex min-h-screen bg-background">
 		<!-- Desktop Sidebar -->
-		<aside class="hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-			<div class="border-b border-slate-200 p-6">
-				<h1 class="text-xl font-bold text-slate-900">Home Planner</h1>
+		<aside class="hidden w-64 flex-col border-r border-border bg-card lg:flex">
+			<div class="border-b border-border p-6">
+				<h1 class="text-xl font-bold text-card-foreground">Home Planner</h1>
 			</div>
 
 			<nav class="flex-1 space-y-1 p-4">
@@ -89,8 +90,8 @@
 						class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors {isActive(
 							item.href
 						)
-							? 'bg-slate-100 text-slate-900'
-							: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
+							? 'bg-accent text-accent-foreground'
+							: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
 					>
 						<item.icon class="h-5 w-5" />
 						{item.label}
@@ -98,8 +99,10 @@
 				{/each}
 
 				{#if $auth.role === 'admin'}
-					<div class="mt-4 border-t border-slate-200 pt-4">
-						<p class="mb-2 px-4 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+					<div class="mt-4 border-t border-border pt-4">
+						<p
+							class="mb-2 px-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+						>
 							Admin
 						</p>
 						{#each adminNavItems as item}
@@ -108,8 +111,8 @@
 								class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors {isActive(
 									item.href
 								)
-									? 'bg-slate-100 text-slate-900'
-									: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
+									? 'bg-accent text-accent-foreground'
+									: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
 							>
 								<item.icon class="h-5 w-5" />
 								{item.label}
@@ -119,16 +122,20 @@
 				{/if}
 			</nav>
 
-			<div class="border-t border-slate-200 p-4">
+			<div class="border-t border-border p-4">
+				<div class="px-4 py-2">
+					<ThemeToggle />
+				</div>
+
 				<div class="flex items-center gap-3 px-4 py-3">
-					<div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200">
-						<span class="text-sm font-medium text-slate-600">
+					<div class="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+						<span class="text-sm font-medium text-muted-foreground">
 							{$auth.name.charAt(0).toUpperCase()}
 						</span>
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-sm font-medium text-slate-900">{$auth.name}</p>
-						<p class="truncate text-xs text-slate-500">{$auth.email}</p>
+						<p class="truncate text-sm font-medium text-card-foreground">{$auth.name}</p>
+						<p class="truncate text-xs text-muted-foreground">{$auth.email}</p>
 					</div>
 				</div>
 				<Button variant="ghost" class="mt-2 w-full justify-start gap-3" onclick={handleLogout}>
@@ -140,9 +147,9 @@
 
 		<!-- Mobile Header -->
 		<div
-			class="fixed top-0 right-0 left-0 z-50 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden"
+			class="fixed top-0 right-0 left-0 z-50 flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:hidden"
 		>
-			<h1 class="text-lg font-bold text-slate-900">Home Planner</h1>
+			<h1 class="text-lg font-bold text-card-foreground">Home Planner</h1>
 			<Button variant="ghost" size="icon" onclick={() => (mobileMenuOpen = !mobileMenuOpen)}>
 				{#if mobileMenuOpen}
 					<X class="h-5 w-5" />
@@ -154,7 +161,7 @@
 
 		<!-- Mobile Menu -->
 		{#if mobileMenuOpen}
-			<div class="fixed inset-0 top-16 z-40 bg-white lg:hidden">
+			<div class="fixed inset-0 top-16 z-40 bg-background lg:hidden">
 				<nav class="space-y-1 p-4">
 					{#each navItems as item}
 						<a
@@ -162,8 +169,8 @@
 							class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors {isActive(
 								item.href
 							)
-								? 'bg-slate-100 text-slate-900'
-								: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
+								? 'bg-accent text-accent-foreground'
+								: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							<item.icon class="h-5 w-5" />
@@ -172,8 +179,10 @@
 					{/each}
 
 					{#if $auth.role === 'admin'}
-						<div class="mt-4 border-t border-slate-200 pt-4">
-							<p class="mb-2 px-4 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+						<div class="mt-4 border-t border-border pt-4">
+							<p
+								class="mb-2 px-4 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+							>
 								Admin
 							</p>
 							{#each adminNavItems as item}
@@ -182,8 +191,8 @@
 									class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors {isActive(
 										item.href
 									)
-										? 'bg-slate-100 text-slate-900'
-										: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
+										? 'bg-accent text-accent-foreground'
+										: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
 									onclick={() => (mobileMenuOpen = false)}
 								>
 									<item.icon class="h-5 w-5" />
@@ -193,16 +202,22 @@
 						</div>
 					{/if}
 
-					<div class="mt-4 border-t border-slate-200 pt-4">
+					<div class="mt-4 border-t border-border pt-4">
+						<div class="px-4 py-2">
+							<ThemeToggle />
+						</div>
+					</div>
+
+					<div class="mt-4 border-t border-border pt-4">
 						<div class="flex items-center gap-3 px-4 py-3">
-							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200">
-								<span class="text-sm font-medium text-slate-600">
+							<div class="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+								<span class="text-sm font-medium text-muted-foreground">
 									{$auth.name.charAt(0).toUpperCase()}
 								</span>
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-medium text-slate-900">{$auth.name}</p>
-								<p class="truncate text-xs text-slate-500">{$auth.email}</p>
+								<p class="truncate text-sm font-medium text-card-foreground">{$auth.name}</p>
+								<p class="truncate text-xs text-muted-foreground">{$auth.email}</p>
 							</div>
 						</div>
 						<Button variant="ghost" class="mt-2 w-full justify-start gap-3" onclick={handleLogout}>
@@ -215,8 +230,8 @@
 		{/if}
 
 		<!-- Main Content -->
-		<main class="flex-1 min-w-0 pt-16 lg:ml-0 lg:pt-0">
-			<div class="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+		<main class="min-w-0 flex-1 pt-16 lg:ml-0 lg:pt-0">
+			<div class="overflow-x-hidden p-4 sm:p-6 lg:p-8">
 				{@render children()}
 			</div>
 		</main>

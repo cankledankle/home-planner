@@ -169,10 +169,9 @@ export async function getPlanActivities(
 ): Promise<PaginatedResponse<Activity>> {
 	// Use raw fetch to get full paginated response with meta
 	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(
-		`${API_BASE}/plans/${planId}/activity?page=${page}&limit=${limit}`,
-		{ credentials: 'include' }
-	);
+	const response = await fetch(`${API_BASE}/plans/${planId}/activity?page=${page}&limit=${limit}`, {
+		credentials: 'include'
+	});
 	if (!response.ok) {
 		const error = await response.json();
 		throw new Error(error.error?.message || 'Failed to load plan activities');
@@ -199,7 +198,11 @@ export async function getFileUrl(fileId: string): Promise<{ url: string; expires
 	return api.get<{ url: string; expires_at: string }>(`/files/${fileId}/url`);
 }
 
-export async function uploadWebsiteFile(planId: string, slot: string, file: globalThis.File): Promise<File> {
+export async function uploadWebsiteFile(
+	planId: string,
+	slot: string,
+	file: globalThis.File
+): Promise<File> {
 	const formData = new FormData();
 	formData.append('file', file);
 	formData.append('slot', slot);
@@ -294,7 +297,10 @@ export async function previewCsvImport(file: globalThis.File): Promise<ImportPre
 	return data.data;
 }
 
-export async function importCsv(file: globalThis.File, options: ImportOptions): Promise<ImportResult> {
+export async function importCsv(
+	file: globalThis.File,
+	options: ImportOptions
+): Promise<ImportResult> {
 	const formData = new FormData();
 	formData.append('file', file);
 	formData.append('mode', options.mode);
@@ -335,7 +341,13 @@ export type { ExportPreset, ExportField };
 export type ExportScope = 'all' | 'selected' | 'filtered';
 
 // Re-export contract constants
-export { EXPORT_ENDPOINTS, EXPORT_PRESETS, EXPORT_FIELDS, EXPORT_PRESET_FIELDS, isValidExportPreset };
+export {
+	EXPORT_ENDPOINTS,
+	EXPORT_PRESETS,
+	EXPORT_FIELDS,
+	EXPORT_PRESET_FIELDS,
+	isValidExportPreset
+};
 
 export interface ExportOptions {
 	type: ExportType;
@@ -397,6 +409,54 @@ export async function exportData(options: ExportOptions): Promise<Blob> {
 	return response.blob();
 }
 
+// Bulk Image Upload API
+export interface BulkUploadResult {
+	success: boolean;
+	plan_id: string;
+	slot: string;
+	filename: string;
+	message?: string;
+}
+
+export interface BulkUploadResponse {
+	results: BulkUploadResult[];
+	summary: {
+		total: number;
+		success: number;
+		failed: number;
+	};
+}
+
+export async function getRecentImports(): Promise<Plan[]> {
+	return api.get<Plan[]>('/import/recent');
+}
+
+export async function bulkUploadFiles(
+	files: globalThis.File[],
+	metadata: Array<{ plan_id: string; slot: string }>
+): Promise<BulkUploadResponse> {
+	const formData = new FormData();
+	files.forEach((file) => {
+		formData.append('files', file);
+	});
+	formData.append('metadata', JSON.stringify(metadata));
+
+	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+	const response = await fetch(`${API_BASE}/plans/bulk-files`, {
+		method: 'POST',
+		credentials: 'include',
+		body: formData
+	});
+
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error?.message || 'Bulk upload failed');
+	}
+
+	const data = await response.json();
+	return data.data;
+}
+
 // SFTP API
 export async function getSFTPStatus(): Promise<SFTPStatus> {
 	return api.get<SFTPStatus>('/sftp/status');
@@ -413,7 +473,10 @@ export async function getUserSFTP(userId: string): Promise<SFTPCredentials | nul
 	}
 }
 
-export async function generateSFTP(userId: string, permission: 'read' | 'readwrite'): Promise<SFTPCredentials> {
+export async function generateSFTP(
+	userId: string,
+	permission: 'read' | 'readwrite'
+): Promise<SFTPCredentials> {
 	return api.post<SFTPCredentials>(`/users/${userId}/sftp`, { permission });
 }
 
@@ -425,7 +488,10 @@ export async function revokeSFTP(userId: string): Promise<void> {
 	return api.put<void>(`/users/${userId}/sftp/revoke`, {});
 }
 
-export async function updateSFTPPermission(userId: string, permission: 'read' | 'readwrite'): Promise<void> {
+export async function updateSFTPPermission(
+	userId: string,
+	permission: 'read' | 'readwrite'
+): Promise<void> {
 	return api.put<void>(`/users/${userId}/sftp/permission`, { permission });
 }
 

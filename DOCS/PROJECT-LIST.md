@@ -275,34 +275,34 @@
 
 ### 12.1 Backend API
 
-- [ ] Modify `POST /api/import/csv` to return created plan IDs in response
-- [ ] Create `GET /api/import/recent` endpoint — fetch recently imported plans (last 24h)
-- [ ] Create `POST /api/plans/bulk-files` endpoint — upload images to multiple plans
-  - [ ] Accept array of `{plan_id, slot, file}` objects
-  - [ ] Validate all plan IDs exist
-  - [ ] Validate slot names are valid website slots
-  - [ ] Process each file with image optimization pipeline
-  - [ ] Return per-file success/failure results
+- [x] Modify `POST /api/import/csv` to return created plan IDs in response
+- [x] Create `GET /api/import/recent` endpoint — fetch recently imported plans (last 24h)
+  - [x] Create `POST /api/plans/bulk-files` endpoint — upload images to multiple plans
+  - [x] Accept array of `{plan_id, slot, file}` objects
+  - [x] Validate all plan IDs exist
+  - [x] Validate slot names are valid website slots
+  - [x] Process each file with image optimization pipeline
+  - [x] Return per-file success/failure results
 
 ### 12.2 Frontend - Import Flow Enhancement
 
-- [ ] Add Step 5 "Upload Images" to import wizard
-- [ ] Create bulk image assignment page component
-  - [ ] Grid view of all imported plans from CSV
-  - [ ] Each plan card shows: name, slug, status, empty slot placeholders
-  - [ ] Bulk drag-drop upload zone at top
-  - [ ] Smart filename matching (optional) — match `{plan-slug}--{slot}` pattern
-  - [ ] Manual slot assignment per uploaded file
-  - [ ] Progress tracking per plan
-  - [ ] Completion summary
+- [x] Add Step 5 "Upload Images" to import wizard
+- [x] Create bulk image assignment page component
+  - [x] Grid view of all imported plans from CSV
+  - [x] Each plan card shows: name, slug, status, empty slot placeholders
+  - [x] Bulk drag-drop upload zone at top
+  - [x] Smart filename matching (optional) — match `{plan-slug}--{slot}` pattern
+  - [x] Manual slot assignment per uploaded file
+  - [x] Progress tracking per plan
+  - [x] Completion summary
 
 ### 12.3 Smart Matching Logic
 
-- [ ] Parse filenames for pattern: `{plan-slug}--{slot-type}--{view}` or `{plan-slug}--{slot}`
-- [ ] Auto-suggest slot assignments based on filename
-- [ ] Show match confidence score
-- [ ] Allow manual override of auto-matches
-- [ ] Support batch assignment — select multiple files, assign to same slot across different plans
+- [x] Parse filenames for pattern: `{plan-slug}--{slot-type}--{view}` or `{plan-slug}--{slot}`
+- [x] Auto-suggest slot assignments based on filename
+- [x] Show match confidence score
+- [x] Allow manual override of auto-matches
+- [x] Support batch assignment — select multiple files, assign to same slot across different plans
 
 ---
 
@@ -310,90 +310,95 @@
 
 ### 13.1 Image Processing Service
 
-- [ ] Add image processing library to Go backend
-  - [ ] Add `github.com/disintegration/imaging` dependency
-- [ ] Create `internal/processing/image.go` service
-  - [ ] `ProcessWebsiteImage()` — resize, compress, format conversion
-  - [ ] `ProcessReferenceFile()` — basic validation only
-  - [ ] `DetectTransparency()` — check if PNG has alpha channel
-  - [ ] `ConvertPNGToJPEG()` — white background replacement
+- [x] Add image processing library to Go backend
+  - [x] Add `github.com/disintegration/imaging` dependency
+- [x] Create `internal/processing/image.go` service
+  - [x] `ProcessWebsiteImage()` — resize, compress, format conversion
+  - [x] `ProcessReferenceFile()` — basic validation only
+  - [x] `DetectTransparency()` — check if PNG has alpha channel
+  - [x] `ConvertPNGToJPEG()` — white background replacement
 
 ### 13.2 Size Limits & Constraints
 
 **Website Images (render, elevations, floor plans, poster):**
-- [ ] Max file size: 5MB (down from 50MB)
-- [ ] Max dimensions: 4000px width/height (4K display)
-- [ ] Output format: JPEG only (no WebP)
-- [ ] JPEG quality: 90%
-- [ ] Strip all metadata (EXIF)
+
+- [x] Max file size: 5MB (down from 50MB)
+- [x] Max dimensions: 4000px width/height (4K display)
+- [x] Output format: JPEG only (no WebP)
+- [x] JPEG quality: 90%
+- [x] Strip all metadata (EXIF)
 
 **Poster Images:**
-- [ ] Max file size: 5MB
-- [ ] Target: 8x12 print @ 300dpi = 2400x3600px
-- [ ] Max dimensions: 4000px
-- [ ] JPEG quality: 90%
+
+- [x] Max file size: 5MB
+- [x] Target: 8x12 print @ 300dpi = 2400x3600px
+- [x] Max dimensions: 4000px
+- [x] JPEG quality: 90%
 
 **Reference/Technical/3D Files:**
-- [ ] Max file size: 50MB (down from 500MB)
-- [ ] No image processing, just validation
+
+- [x] Max file size: 50MB (down from 500MB)
+- [x] No image processing, just validation
 
 ### 13.3 Naming Constraints & Standardization
 
-- [ ] Create filename validation utility
-  - [ ] Pattern: `{plan-slug}--{slot-type}--{view}.{ext}` or `{plan-slug}--{slot}.{ext}`
-  - [ ] Valid extensions: .jpg, .jpeg, .png
-  - [ ] Max filename length: 100 characters
-  - [ ] Lowercase only, no spaces
-  - [ ] Allowed characters: a-z, 0-9, hyphen, underscore
-- [ ] Auto-rename uploaded files to match convention
-- [ ] Storage key format: `plans/{slug}/website/{slot}.jpg`
+- [x] Create filename validation utility
+  - [x] Pattern: `{plan-slug}--{slot-type}--{view}.{ext}` or `{plan-slug}--{slot}.{ext}`
+  - [x] Valid extensions: .jpg, .jpeg, .png
+  - [x] Max filename length: 100 characters
+  - [x] Lowercase only, no spaces
+  - [x] Allowed characters: a-z, 0-9, hyphen, underscore
+- [x] Auto-rename uploaded files to match convention
+- [x] Storage key format: `plans/{slug}/website/{slot}.jpg`
 
 ### 13.4 PNG/JPEG Duplicate Handling
 
-- [ ] When PNG uploaded for website slot:
-  - [ ] Detect if transparency exists
-  - [ ] If no transparency: convert to JPEG with white background, use JPEG for website
-  - [ ] If transparency exists: reject for website slots (show error)
-  - [ ] Always keep original PNG in "other" category if uploaded
+- [x] When PNG uploaded for website slot:
+  - [x] Detect if transparency exists
+  - [x] If no transparency: convert to JPEG with white background, use JPEG for website
+  - [x] If transparency exists: reject for website slots (show error)
+  - [ ] Always keep original PNG in "other" category if uploaded (deferred to Phase 12)
 - [ ] When JPEG exists and PNG uploaded:
   - [ ] Use JPEG for website slot
   - [ ] Store PNG in "other" category
   - [ ] Show info message: "Using JPEG for website, PNG saved to Other Files"
-- [ ] No auto-deletion — keep both formats in storage
+- [x] No auto-deletion — keep both formats in storage
 
 ### 13.5 Processing Pipeline
 
 **Website Image Upload Flow:**
-1. Receive file
-2. Validate file type (image/jpeg, image/png only)
-3. Validate file size (≤5MB after processing)
-4. Detect format and transparency (PNG only)
-5. Resize if >4000px dimension
-6. Convert to JPEG:
-   - PNG with transparency → white background
-   - PNG without transparency → direct conversion
-   - JPEG → re-encode at 90% quality
-7. Strip metadata
-8. Validate output size ≤5MB
-9. Upload to R2
-10. Save file record
+
+1. [x] Receive file
+2. [x] Validate file type (image/jpeg, image/png only)
+3. [x] Validate file size (≤5MB after processing)
+4. [x] Detect format and transparency (PNG only)
+5. [x] Resize if >4000px dimension
+6. [x] Convert to JPEG:
+   - [x] PNG with transparency → white background
+   - [x] PNG without transparency → direct conversion
+   - [x] JPEG → re-encode at 90% quality
+7. [x] Strip metadata
+8. [x] Validate output size ≤5MB
+9. [x] Upload to R2
+10. [x] Save file record
 
 **Reference File Upload Flow:**
-1. Receive file
-2. Validate file size ≤50MB
-3. Upload to R2 as-is
-4. Save file record
+
+1. [x] Receive file
+2. [x] Validate file size ≤50MB
+3. [x] Upload to R2 as-is
+4. [x] Save file record
 
 ### 13.6 Frontend Updates
 
-- [ ] Update upload components to show new size limits
-- [ ] Show processing progress indicator
-- [ ] Display warnings for:
-  - [ ] Files >5MB will be compressed
-  - [ ] PNGs with transparency cannot be used for website (will be stored as "other")
-  - [ ] Original filename will be standardized
-- [ ] Add file size preview before upload
-- [ ] Show optimization savings (original vs processed size)
+- [x] Update upload components to show new size limits
+- [x] Show processing progress indicator
+- [x] Display warnings for:
+  - [x] Files >5MB will be compressed
+  - [x] PNGs with transparency cannot be used for website (will be stored as "other")
+  - [x] Original filename will be standardized
+- [x] Add file size preview before upload
+- [x] Show optimization savings (original vs processed size)
 
 ---
 

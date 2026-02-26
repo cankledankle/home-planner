@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	
+	import BulkImageUpload from '$lib/components/import/BulkImageUpload.svelte';
+
 	import { toast } from 'svelte-sonner';
 	import {
 		Upload,
@@ -16,11 +17,21 @@
 		Check,
 		Download
 	} from '@lucide/svelte';
-	import { previewCsvImport, importCsv, type ImportPreview, type ImportResult } from '$lib/api';
+	import {
+		previewCsvImport,
+		importCsv,
+		getRecentImports,
+		type ImportPreview,
+		type ImportResult
+	} from '$lib/api';
+	import type { Plan } from '$lib/types';
 
 	// Step management
 	let currentStep = $state(1);
-	const totalSteps = 4;
+	const totalSteps = 5;
+
+	// Recently imported plans for bulk image upload
+	let recentPlans = $state<Plan[]>([]);
 
 	// File upload
 	let selectedFile = $state<File | null>(null);
@@ -131,6 +142,15 @@
 				mode: importMode,
 				mapping
 			});
+
+			// Fetch recently imported plans for bulk image upload
+			try {
+				recentPlans = await getRecentImports();
+			} catch (err) {
+				console.error('Failed to fetch recent imports:', err);
+				recentPlans = [];
+			}
+
 			currentStep = 4;
 		} catch (err) {
 			toast.error('Import failed');
@@ -234,14 +254,16 @@
 
 		const csvRows = [
 			headers.join(','),
-			...exampleData.map(row => 
-				headers.map(header => {
-					const value = row[header as keyof typeof row];
-					if (typeof value === 'string' && value.includes(',')) {
-						return `"${value.replace(/"/g, '""')}"`;
-					}
-					return value ?? '';
-				}).join(',')
+			...exampleData.map((row) =>
+				headers
+					.map((header) => {
+						const value = row[header as keyof typeof row];
+						if (typeof value === 'string' && value.includes(',')) {
+							return `"${value.replace(/"/g, '""')}"`;
+						}
+						return value ?? '';
+					})
+					.join(',')
 			)
 		];
 
@@ -262,22 +284,22 @@
 <div class="mx-auto max-w-4xl space-y-6">
 	<!-- Header -->
 	<div class="text-center">
-		<h1 class="text-3xl font-bold text-slate-900">Import Plans</h1>
-		<p class="mt-2 text-slate-600">Import home plans from a CSV file</p>
+		<h1 class="text-3xl font-bold text-card-foreground">Import Plans</h1>
+		<p class="mt-2 text-muted-foreground">Import home plans from a CSV file</p>
 	</div>
 
 	<!-- Step Indicator -->
 	<div class="relative">
 		<div class="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-slate-200"></div>
 		<div class="relative flex justify-between">
-			{#each [1, 2, 3, 4] as step}
+			{#each [1, 2, 3, 4, 5] as step}
 				<button
 					class="flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors {currentStep >
 					step
 						? 'border-green-500 bg-green-500 text-white'
 						: currentStep === step
 							? 'border-blue-600 bg-blue-600 text-white'
-							: 'border-slate-300 bg-white text-slate-500'}"
+							: 'border-input bg-card text-muted-foreground'}"
 					onclick={() => goToStep(step)}
 					disabled={step > currentStep}
 				>
@@ -289,27 +311,28 @@
 				</button>
 			{/each}
 		</div>
-		<div class="mt-2 flex justify-between text-xs text-slate-500">
-			<span class="text-center w-10 sm:w-auto">Upload</span>
-			<span class="text-center w-10 sm:w-auto">Mapping</span>
-			<span class="text-center w-10 sm:w-auto">Review</span>
-			<span class="text-center w-10 sm:w-auto">Results</span>
+		<div class="mt-2 flex justify-between text-xs text-muted-foreground">
+			<span class="w-10 text-center sm:w-auto">Upload</span>
+			<span class="w-10 text-center sm:w-auto">Mapping</span>
+			<span class="w-10 text-center sm:w-auto">Review</span>
+			<span class="w-10 text-center sm:w-auto">Results</span>
+			<span class="w-10 text-center sm:w-auto">Images</span>
 		</div>
 	</div>
 
 	<!-- Step Content -->
-	<div class="rounded-lg border border-slate-200 bg-white p-6">
+	<div class="rounded-lg border border-border bg-card p-6">
 		{#if currentStep === 1}
 			<!-- Step 1: Upload -->
 			<div class="space-y-6">
-				<h2 class="text-xl font-semibold text-slate-900">Upload CSV File</h2>
+				<h2 class="text-xl font-semibold text-card-foreground">Upload CSV File</h2>
 
 				<div
 					class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragging
 						? 'border-blue-500 bg-blue-50'
 						: selectedFile
 							? 'border-green-300 bg-green-50'
-							: 'border-slate-300 hover:border-slate-400'}"
+							: 'border-input hover:border-slate-400'}"
 					ondrop={handleDrop}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
@@ -322,8 +345,8 @@
 								<FileSpreadsheet class="h-6 w-6 text-green-600" />
 							</div>
 							<div>
-								<p class="font-medium text-slate-900">{selectedFile.name}</p>
-								<p class="text-sm text-slate-500">
+								<p class="font-medium text-card-foreground">{selectedFile.name}</p>
+								<p class="text-sm text-muted-foreground">
 									{(selectedFile.size / 1024).toFixed(1)} KB
 								</p>
 							</div>
@@ -338,8 +361,8 @@
 								<Upload class="h-6 w-6 text-blue-600" />
 							</div>
 							<div>
-								<p class="font-medium text-slate-900">Drop your CSV file here</p>
-								<p class="text-sm text-slate-500">or click to browse</p>
+								<p class="font-medium text-card-foreground">Drop your CSV file here</p>
+								<p class="text-sm text-muted-foreground">or click to browse</p>
 							</div>
 							<Button
 								variant="outline"
@@ -358,11 +381,11 @@
 					{/if}
 				</div>
 
-				<div class="rounded-lg bg-slate-50 p-4">
+				<div class="rounded-lg bg-muted p-4">
 					<div class="flex flex-col gap-4">
 						<div>
-							<h3 class="mb-2 font-medium text-slate-900">CSV Format Requirements</h3>
-							<ul class="space-y-1 text-sm text-slate-600">
+							<h3 class="mb-2 font-medium text-card-foreground">CSV Format Requirements</h3>
+							<ul class="space-y-1 text-sm text-muted-foreground">
 								<li>• First row must contain column headers</li>
 								<li>• Required column: Plan Name</li>
 								<li>• Optional columns: Type, Style, Beds, Baths, Heated SF, etc.</li>
@@ -370,7 +393,12 @@
 							</ul>
 						</div>
 						<div class="flex-shrink-0">
-							<Button variant="outline" size="sm" onclick={downloadExampleCsv} class="w-full sm:w-auto">
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={downloadExampleCsv}
+								class="w-full sm:w-auto"
+							>
 								<Download class="mr-2 h-4 w-4" />
 								Download Example CSV
 							</Button>
@@ -394,8 +422,8 @@
 			<!-- Step 2: Column Mapping -->
 			<div class="space-y-6">
 				<div class="flex items-center justify-between">
-					<h2 class="text-xl font-semibold text-slate-900">Map Columns</h2>
-					<div class="text-sm text-slate-600">
+					<h2 class="text-xl font-semibold text-card-foreground">Map Columns</h2>
+					<div class="text-sm text-muted-foreground">
 						{preview?.total_rows ?? 0} rows found
 					</div>
 				</div>
@@ -405,39 +433,39 @@
 					<span class="text-sm font-medium">Import Mode</span>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 						<label
-							class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 {importMode ===
+							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'create'
 								? 'border-blue-500 bg-blue-50'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="create" class="h-4 w-4" />
 							<div>
-								<p class="font-medium text-slate-900">Create New</p>
-								<p class="text-xs text-slate-500">Only create new plans</p>
+								<p class="font-medium text-card-foreground">Create New</p>
+								<p class="text-xs text-muted-foreground">Only create new plans</p>
 							</div>
 						</label>
 						<label
-							class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 {importMode ===
+							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'update'
 								? 'border-blue-500 bg-blue-50'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="update" class="h-4 w-4" />
 							<div>
-								<p class="font-medium text-slate-900">Update Existing</p>
-								<p class="text-xs text-slate-500">Only update existing plans</p>
+								<p class="font-medium text-card-foreground">Update Existing</p>
+								<p class="text-xs text-muted-foreground">Only update existing plans</p>
 							</div>
 						</label>
 						<label
-							class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 transition-colors hover:bg-slate-50 {importMode ===
+							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'upsert'
 								? 'border-blue-500 bg-blue-50'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="upsert" class="h-4 w-4" />
 							<div>
-								<p class="font-medium text-slate-900">Create or Update</p>
-								<p class="text-xs text-slate-500">Create new or update existing</p>
+								<p class="font-medium text-card-foreground">Create or Update</p>
+								<p class="text-xs text-muted-foreground">Create new or update existing</p>
 							</div>
 						</label>
 					</div>
@@ -445,25 +473,27 @@
 
 				<!-- Column Mapping -->
 				<div class="space-y-4">
-					<h3 class="font-medium text-slate-900">Column Mapping</h3>
-					<p class="text-sm text-slate-600">
+					<h3 class="font-medium text-card-foreground">Column Mapping</h3>
+					<p class="text-sm text-muted-foreground">
 						Match your CSV columns to plan fields. At minimum, Plan Name is required.
 					</p>
 
 					<div class="space-y-3">
 						{#each preview?.columns ?? [] as column}
-							<div class="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 sm:flex-row sm:items-center sm:gap-4">
-								<div class="flex-1 min-w-0">
-									<p class="font-medium text-slate-900 truncate">{column}</p>
-									<p class="text-sm text-slate-500 truncate">
+							<div
+								class="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:gap-4"
+							>
+								<div class="min-w-0 flex-1">
+									<p class="truncate font-medium text-card-foreground">{column}</p>
+									<p class="truncate text-sm text-muted-foreground">
 										Example: {preview?.preview[0]?.[column] ?? 'N/A'}
 									</p>
 								</div>
-								<div class="flex items-center gap-2 flex-shrink-0">
-									<span class="text-slate-400 hidden sm:inline">→</span>
+								<div class="flex flex-shrink-0 items-center gap-2">
+									<span class="hidden text-muted-foreground sm:inline">→</span>
 									<select
 										bind:value={columnMapping[column]}
-										class="w-full sm:w-auto sm:min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+										class="w-full rounded-md border border-input px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none sm:w-auto sm:min-w-[200px]"
 									>
 										<option value="">— Skip this column —</option>
 										{#each planFields as field}
@@ -474,7 +504,7 @@
 										{/each}
 									</select>
 									{#if columnMapping[column] === 'name'}
-										<span class="rounded-full bg-green-100 p-1 flex-shrink-0">
+										<span class="flex-shrink-0 rounded-full bg-green-100 p-1">
 											<Check class="h-4 w-4 text-green-600" />
 										</span>
 									{/if}
@@ -498,32 +528,32 @@
 		{:else if currentStep === 3}
 			<!-- Step 3: Review -->
 			<div class="space-y-6">
-				<h2 class="text-xl font-semibold text-slate-900">Review Import</h2>
+				<h2 class="text-xl font-semibold text-card-foreground">Review Import</h2>
 
 				<div class="space-y-4">
-					<div class="rounded-lg bg-slate-50 p-4">
-						<h3 class="mb-2 font-medium text-slate-900">Import Summary</h3>
+					<div class="rounded-lg bg-muted p-4">
+						<h3 class="mb-2 font-medium text-card-foreground">Import Summary</h3>
 						<div class="grid grid-cols-2 gap-4 text-sm">
 							<div>
-								<span class="text-slate-500">Mode:</span>
+								<span class="text-muted-foreground">Mode:</span>
 								<span class="ml-2 font-medium capitalize">{importMode}</span>
 							</div>
 							<div>
-								<span class="text-slate-500">Total Rows:</span>
+								<span class="text-muted-foreground">Total Rows:</span>
 								<span class="ml-2 font-medium">{preview?.total_rows}</span>
 							</div>
 						</div>
 					</div>
 
-					<div class="rounded-lg bg-slate-50 p-4">
-						<h3 class="mb-2 font-medium text-slate-900">Column Mapping</h3>
+					<div class="rounded-lg bg-muted p-4">
+						<h3 class="mb-2 font-medium text-card-foreground">Column Mapping</h3>
 						<div class="space-y-1 text-sm">
 							{#each Object.entries(columnMapping) as [csvCol, planField]}
 								{#if planField}
 									<div class="flex items-center gap-2">
-										<span class="text-slate-600">{csvCol}</span>
-										<span class="text-slate-400">→</span>
-										<span class="font-medium text-slate-900">
+										<span class="text-muted-foreground">{csvCol}</span>
+										<span class="text-muted-foreground">→</span>
+										<span class="font-medium text-card-foreground">
 											{planFields.find((f) => f.value === planField)?.label ?? planField}
 										</span>
 									</div>
@@ -595,7 +625,7 @@
 						</div>
 					{/if}
 
-					<h2 class="text-xl font-semibold text-slate-900">Import Complete</h2>
+					<h2 class="text-xl font-semibold text-card-foreground">Import Complete</h2>
 
 					<div class="grid grid-cols-2 gap-4">
 						<div class="rounded-lg bg-green-50 p-4">
@@ -626,13 +656,46 @@
 						<Button variant="outline" onclick={() => (window.location.href = '/plans')}>
 							View Plans
 						</Button>
-						<Button onclick={resetImport}>
-							<RefreshCw class="mr-2 h-4 w-4" />
-							Import Another File
-						</Button>
+						{#if recentPlans.length > 0}
+							<Button onclick={() => (currentStep = 5)}>
+								Upload Images
+								<ArrowRight class="ml-2 h-4 w-4" />
+							</Button>
+						{:else}
+							<Button onclick={resetImport}>
+								<RefreshCw class="mr-2 h-4 w-4" />
+								Import Another File
+							</Button>
+						{/if}
 					</div>
 				{/if}
 			</div>
+		{:else if currentStep === 5}
+			<!-- Step 5: Bulk Image Upload -->
+			{#if recentPlans.length > 0}
+				<BulkImageUpload
+					plans={recentPlans}
+					onComplete={() => {
+						toast.success('Import process complete!');
+						resetImport();
+					}}
+					onBack={() => (currentStep = 4)}
+					onSkip={() => {
+						toast.success('Skipped image upload');
+						resetImport();
+					}}
+				/>
+			{:else}
+				<div class="space-y-6 text-center">
+					<AlertCircle class="mx-auto h-12 w-12 text-amber-600" />
+					<h2 class="text-xl font-semibold text-card-foreground">No Recent Plans</h2>
+					<p class="text-muted-foreground">No plans were found from the recent import.</p>
+					<Button onclick={resetImport}>
+						<RefreshCw class="mr-2 h-4 w-4" />
+						Start Over
+					</Button>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>

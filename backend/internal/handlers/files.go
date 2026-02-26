@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/cankledankle/home-planner/internal/db"
+	"github.com/cankledankle/home-planner/internal/processing"
 	"github.com/cankledankle/home-planner/internal/storage"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -26,8 +27,6 @@ var validWebsiteSlots = map[string]bool{
 var validImageTypes = map[string]bool{
 	"image/jpeg": true,
 	"image/png":  true,
-	"image/webp": true,
-	"image/gif":  true,
 }
 
 var validCategories = map[string]bool{
@@ -38,8 +37,8 @@ var validCategories = map[string]bool{
 }
 
 const (
-	maxImageSize = 50 * 1024 * 1024  // 50MB
-	maxFileSize  = 500 * 1024 * 1024 // 500MB
+	maxImageSize = processing.MaxWebsiteImageSize  // 5MB
+	maxFileSize  = processing.MaxReferenceFileSize // 50MB
 )
 
 type FileHandler struct {
@@ -108,15 +107,6 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 		})
 	}
 
-	if fileHeader.Size > maxImageSize {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": fmt.Sprintf("File size exceeds 50MB limit"),
-			},
-		})
-	}
-
 	contentType := fileHeader.Header.Get("Content-Type")
 	if contentType == "" {
 		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
@@ -125,10 +115,6 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 			contentType = "image/jpeg"
 		case ".png":
 			contentType = "image/png"
-		case ".webp":
-			contentType = "image/webp"
-		case ".gif":
-			contentType = "image/gif"
 		}
 	}
 
@@ -136,7 +122,7 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fiber.Map{
 				"code":    "VALIDATION_ERROR",
-				"message": "Only image files (JPEG, PNG, WebP, GIF) are allowed for website uploads",
+				"message": "Only JPEG and PNG images are allowed for website uploads",
 			},
 		})
 	}
@@ -163,11 +149,24 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 		})
 	}
 
-	ext := filepath.Ext(fileHeader.Filename)
-	storageKey := fmt.Sprintf("plans/%s/website/%s%s", plan.Slug, slot, ext)
+	// Process the image
+	isPoster := slot == "poster"
+	processResult, err := processing.ProcessWebsiteImage(fileData, contentType, isPoster)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "PROCESSING_ERROR",
+				"message": fmt.Sprintf("Image processing failed: %v", err),
+			},
+		})
+	}
+
+	// Use standardized filename and storage key
+	storageKey := processing.GenerateStorageKey(plan.Slug, slot)
+	processedFilename := processing.StandardizeFilenameForSlot(fileHeader.Filename, plan.Slug, slot)
 
 	if h.r2Client != nil {
-		err = h.r2Client.UploadFile(c.Context(), storageKey, fileData, contentType)
+		err = h.r2Client.UploadFile(c.Context(), storageKey, processResult.Data, "image/jpeg")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": fiber.Map{
@@ -180,7 +179,7 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 
 	userID := c.Locals("userID").(string)
 
-	fileRow, err := db.UpsertWebsiteFile(c.Context(), planID, slot, fileHeader.Filename, storageKey, contentType, fileHeader.Size, userID)
+	fileRow, err := db.UpsertWebsiteFile(c.Context(), planID, slot, processedFilename, storageKey, "image/jpeg", processResult.SizeBytes, userID)
 	if err != nil {
 		if h.r2Client != nil {
 			h.r2Client.DeleteFile(c.Context(), storageKey)
@@ -195,20 +194,32 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 
 	_, err = db.RecalculatePlanStatus(c.Context(), planID)
 	if err != nil {
-		// Log error but don't fail the request
 		fmt.Printf("Failed to recalculate plan status: %v\n", err)
 	}
 
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
 	db.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
-		"filename": fileHeader.Filename,
-		"slot":     slot,
-		"category": "website",
+		"filename":       processedFilename,
+		"slot":           slot,
+		"category":       "website",
+		"original_size":  processResult.OriginalSize,
+		"processed_size": processResult.SizeBytes,
 	})
 
+	response := formatFileResponseFromRow(fileRow)
+	response["processing"] = fiber.Map{
+		"original_size":  processResult.OriginalSize,
+		"processed_size": processResult.SizeBytes,
+		"width":          processResult.Width,
+		"height":         processResult.Height,
+		"was_resized":    processResult.WasResized,
+		"was_converted":  processResult.WasConverted,
+		"warnings":       processResult.Warnings,
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"data": formatFileResponseFromRow(fileRow),
+		"data": response,
 	})
 }
 
@@ -297,7 +308,7 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": fiber.Map{
 					"code":    "VALIDATION_ERROR",
-					"message": fmt.Sprintf("File %s exceeds 500MB limit", fileHeader.Filename),
+					"message": fmt.Sprintf("File %s exceeds 50MB limit", fileHeader.Filename),
 				},
 			})
 		}

@@ -136,6 +136,7 @@ type ImportResult struct {
 	Updated int           `json:"updated"`
 	Skipped int           `json:"skipped"`
 	Errors  []ImportError `json:"errors"`
+	PlanIDs []string      `json:"plan_ids"`
 }
 
 type ImportError struct {
@@ -215,6 +216,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 		Updated: 0,
 		Skipped: 0,
 		Errors:  []ImportError{},
+		PlanIDs: []string{},
 	}
 
 	ctx := c.Context()
@@ -324,7 +326,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 				CreatedBy:         userID,
 			}
 
-			_, err := db.CreatePlan(ctx, createInput)
+			createdPlan, err := db.CreatePlan(ctx, createInput)
 			if err != nil {
 				result.Errors = append(result.Errors, ImportError{
 					Row:     rowNum - 1,
@@ -333,6 +335,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 				continue
 			}
 			result.Created++
+			result.PlanIDs = append(result.PlanIDs, createdPlan.ID)
 		}
 	}
 
@@ -449,4 +452,22 @@ func generateSlug(name string) string {
 		}
 	}
 	return result.String()
+}
+
+func (h *ImportHandler) GetRecentImports(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	plans, err := db.GetRecentlyImportedPlans(ctx)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "INTERNAL_ERROR",
+				"message": fmt.Sprintf("Failed to fetch recent imports: %v", err),
+			},
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"data": plans,
+	})
 }

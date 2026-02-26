@@ -271,8 +271,8 @@
 	<!-- Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-3xl font-bold text-slate-900">Plans</h1>
-			<p class="mt-1 text-slate-600">
+			<h1 class="text-3xl font-bold text-card-foreground">Plans</h1>
+			<p class="mt-1 text-muted-foreground">
 				{plans?.meta.total ?? 0} plans in your collection
 			</p>
 		</div>
@@ -289,7 +289,7 @@
 				</DialogHeader>
 				<div class="space-y-4 pt-4">
 					<div>
-						<label for="plan-name" class="mb-2 block text-sm font-medium text-slate-700">
+						<label for="plan-name" class="mb-2 block text-sm font-medium text-foreground">
 							Plan Name *
 						</label>
 						<Input
@@ -317,7 +317,7 @@
 	<!-- Search and Controls -->
 	<div class="flex flex-col gap-4 lg:flex-row">
 		<div class="relative max-w-md flex-1">
-			<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+			<Search class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 			<Input placeholder="Search plans..." class="pl-10" bind:value={searchQuery} />
 		</div>
 
@@ -325,7 +325,7 @@
 			<Button
 				variant="outline"
 				size="sm"
-				class={showFilters ? 'bg-slate-100' : ''}
+				class={showFilters ? 'bg-muted' : ''}
 				onclick={() => (showFilters = !showFilters)}
 			>
 				<Filter class="mr-2 h-4 w-4" />
@@ -339,7 +339,7 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					class={viewMode === 'table' ? 'bg-slate-100' : ''}
+					class={viewMode === 'table' ? 'bg-muted' : ''}
 					onclick={() => (viewMode = 'table')}
 				>
 					<List class="h-4 w-4" />
@@ -347,7 +347,7 @@
 				<Button
 					variant="ghost"
 					size="sm"
-					class={viewMode === 'grid' ? 'bg-slate-100' : ''}
+					class={viewMode === 'grid' ? 'bg-muted' : ''}
 					onclick={() => (viewMode = 'grid')}
 				>
 					<LayoutGrid class="h-4 w-4" />
@@ -358,9 +358,9 @@
 
 	<!-- Filters Panel -->
 	{#if showFilters}
-		<div class="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+		<div class="space-y-4 rounded-lg border border-border bg-muted p-4">
 			<div class="flex items-center justify-between">
-				<h3 class="font-medium text-slate-900">Filters</h3>
+				<h3 class="font-medium text-card-foreground">Filters</h3>
 				{#if hasActiveFilters}
 					<Button variant="ghost" size="sm" onclick={clearFilters}>
 						<X class="mr-1 h-4 w-4" />
@@ -370,7 +370,7 @@
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div>
-					<label for="status-filter" class="mb-2 block text-sm font-medium text-slate-700"
+					<label for="status-filter" class="mb-2 block text-sm font-medium text-foreground"
 						>Status</label
 					>
 					<select
@@ -385,7 +385,8 @@
 					</select>
 				</div>
 				<div>
-					<label for="type-filter" class="mb-2 block text-sm font-medium text-slate-700">Type</label
+					<label for="type-filter" class="mb-2 block text-sm font-medium text-foreground"
+						>Type</label
 					>
 					<select
 						id="type-filter"
@@ -398,7 +399,7 @@
 					</select>
 				</div>
 				<div>
-					<label for="style-filter" class="mb-2 block text-sm font-medium text-slate-700"
+					<label for="style-filter" class="mb-2 block text-sm font-medium text-foreground"
 						>Style</label
 					>
 					<select
@@ -421,7 +422,7 @@
 	<!-- Bulk Action Bar -->
 	{#if selectedCount > 0}
 		<div
-			class="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 shadow-sm"
+			class="sticky top-0 z-10 flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-3">
 				<Checkbox
@@ -437,7 +438,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-white hover:bg-blue-100"
+					class="border-blue-200 bg-card hover:bg-blue-100"
 					onclick={handleBulkFlag}
 					disabled={bulkActionLoading}
 				>
@@ -447,18 +448,18 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-white hover:bg-blue-100"
+					class="border-blue-200 bg-card hover:bg-blue-100"
 					onclick={handleBulkUnflag}
 					disabled={bulkActionLoading}
 				>
 					<FlagOff class="mr-1.5 h-3.5 w-3.5" />
 					<span class="hidden sm:inline">Unflag</span>
 				</Button>
-				<div class="mx-1 h-6 w-px bg-blue-200 hidden sm:block"></div>
+				<div class="mx-1 hidden h-6 w-px bg-blue-200 sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-white hover:bg-blue-100"
+					class="border-blue-200 bg-card hover:bg-blue-100"
 					onclick={() => (exportModalOpen = true)}
 					disabled={bulkActionLoading}
 				>
@@ -468,17 +469,17 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-white hover:bg-blue-100"
+					class="border-blue-200 bg-card hover:bg-blue-100"
 					disabled={bulkActionLoading}
 				>
 					<Archive class="mr-1.5 h-3.5 w-3.5" />
 					<span class="hidden sm:inline">ZIP</span>
 				</Button>
-				<div class="mx-1 h-6 w-px bg-blue-200 hidden sm:block"></div>
+				<div class="mx-1 hidden h-6 w-px bg-blue-200 sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+					class="border-red-200 bg-card text-red-600 hover:bg-red-50 hover:text-red-700"
 					onclick={handleBulkDelete}
 					disabled={bulkActionLoading}
 				>
@@ -494,7 +495,7 @@
 
 	<!-- Content -->
 	{#if loading}
-		<div class="rounded-lg border border-slate-200 bg-white">
+		<div class="rounded-lg border border-border bg-card">
 			<TableSkeleton count={5} />
 		</div>
 	{:else if plans?.data?.length === 0}
@@ -505,15 +506,15 @@
 				? "Try adjusting your search or filters to find what you're looking for."
 				: 'Get started by creating your first home plan.'}
 			actionLabel={hasActiveFilters ? 'Clear Filters' : 'Create First Plan'}
-			onAction={hasActiveFilters ? clearFilters : () => newPlanOpen = true}
+			onAction={hasActiveFilters ? clearFilters : () => (newPlanOpen = true)}
 		/>
 	{:else}
 		{#if viewMode === 'table'}
-			<!-- Table View - isolated overflow container -->
-			<div class="relative rounded-lg border border-slate-200 bg-white">
-				<div class="overflow-x-auto" style="max-width: 100vw;">
-					<table class="min-w-[900px] text-left text-sm">
-						<thead class="border-b border-slate-200 bg-slate-50 font-medium text-slate-600">
+			<!-- Table View - fills available width -->
+			<div class="relative w-full rounded-lg border border-border bg-card">
+				<div class="overflow-x-auto">
+					<table class="w-full text-left text-sm">
+						<thead class="border-b border-border bg-muted font-medium text-muted-foreground">
 							<tr>
 								<th class="w-10 px-4 py-3">
 									<Checkbox
@@ -523,7 +524,7 @@
 									/>
 								</th>
 								<th
-									class="cursor-pointer px-4 py-3 hover:bg-slate-100"
+									class="w-[25%] min-w-[200px] cursor-pointer px-4 py-3 hover:bg-muted"
 									onclick={() => handleSort('name')}
 								>
 									<div class="flex items-center gap-1">
@@ -533,11 +534,11 @@
 										{/if}
 									</div>
 								</th>
-								<th class="px-4 py-3">Status</th>
-								<th class="px-4 py-3">Type</th>
-								<th class="px-4 py-3">Style</th>
+								<th class="w-[12%] px-4 py-3">Status</th>
+								<th class="w-[12%] px-4 py-3">Type</th>
+								<th class="w-[12%] px-4 py-3">Style</th>
 								<th
-									class="cursor-pointer px-4 py-3 hover:bg-slate-100"
+									class="w-[10%] cursor-pointer px-4 py-3 hover:bg-muted"
 									onclick={() => handleSort('beds')}
 								>
 									<div class="flex items-center gap-1">
@@ -547,9 +548,9 @@
 										{/if}
 									</div>
 								</th>
-								<th class="px-4 py-3">Baths</th>
+								<th class="w-[10%] px-4 py-3">Baths</th>
 								<th
-									class="cursor-pointer px-4 py-3 hover:bg-slate-100"
+									class="w-[12%] cursor-pointer px-4 py-3 hover:bg-muted"
 									onclick={() => handleSort('heated_sf')}
 								>
 									<div class="flex items-center gap-1">
@@ -559,23 +560,13 @@
 										{/if}
 									</div>
 								</th>
-								<th
-									class="cursor-pointer px-4 py-3 hover:bg-slate-100"
-									onclick={() => handleSort('updated_at')}
-								>
-									<div class="flex items-center gap-1">
-										Updated
-										{#if sortField === 'updated_at'}
-											<ChevronDown class="h-4 w-4 {sortOrder === 'desc' ? 'rotate-180' : ''}" />
-										{/if}
-									</div>
-								</th>
+								<th class="w-[12%] px-4 py-3">Updated</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-slate-100">
+						<tbody class="divide-y divide-border">
 							{#each plans?.data ?? [] as plan}
 								<tr
-									class="transition-colors hover:bg-slate-50 {selectedIds.has(plan.id)
+									class="transition-colors hover:bg-muted {selectedIds.has(plan.id)
 										? 'bg-blue-50/50'
 										: ''}"
 								>
@@ -605,18 +596,18 @@
 											{plan.status}
 										</span>
 									</td>
-									<td class="px-4 py-3 text-slate-600 capitalize"
+									<td class="px-4 py-3 text-muted-foreground capitalize"
 										>{plan.type?.replace('_', ' ') ?? '-'}</td
 									>
-									<td class="px-4 py-3 text-slate-600 capitalize">{plan.style ?? '-'}</td>
-									<td class="px-4 py-3 text-slate-600">{plan.beds ?? '-'}</td>
-									<td class="px-4 py-3 text-slate-600">
+									<td class="px-4 py-3 text-muted-foreground capitalize">{plan.style ?? '-'}</td>
+									<td class="px-4 py-3 text-muted-foreground">{plan.beds ?? '-'}</td>
+									<td class="px-4 py-3 text-muted-foreground">
 										{plan.baths ?? '-'}{plan.half_baths ? `.${plan.half_baths}` : ''}
 									</td>
-									<td class="px-4 py-3 text-slate-600">
+									<td class="px-4 py-3 text-muted-foreground">
 										{plan.heated_sf?.toLocaleString() ?? '-'}
 									</td>
-									<td class="px-4 py-3 text-xs text-slate-500">
+									<td class="px-4 py-3 text-xs text-muted-foreground">
 										{new Date(plan.updated_at ?? '').toLocaleDateString()}
 									</td>
 								</tr>
@@ -630,7 +621,7 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each plans?.data ?? [] as plan}
 					<div
-						class="group relative overflow-hidden rounded-lg border border-slate-200 bg-white transition-all hover:shadow-md {selectedIds.has(
+						class="group relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:shadow-md {selectedIds.has(
 							plan.id
 						)
 							? 'border-blue-500 ring-2 ring-blue-500'
@@ -641,17 +632,17 @@
 							<Checkbox
 								checked={selectedIds.has(plan.id)}
 								onCheckedChange={() => toggleSelection(plan.id)}
-								class="bg-white shadow-sm"
+								class="bg-card shadow-sm"
 							/>
 						</div>
 						<a href="/plans/{plan.id}" class="block">
-							<div class="flex aspect-[4/3] items-center justify-center bg-slate-100">
-								<span class="text-sm text-slate-400">No image</span>
+							<div class="flex aspect-[4/3] items-center justify-center bg-muted">
+								<span class="text-sm text-muted-foreground">No image</span>
 							</div>
 							<div class="p-4">
 								<div class="flex items-start justify-between gap-2">
 									<h3
-										class="truncate font-medium text-slate-900 transition-colors group-hover:text-blue-600"
+										class="truncate font-medium text-card-foreground transition-colors group-hover:text-blue-600"
 									>
 										{plan.name}
 									</h3>
@@ -666,7 +657,7 @@
 										{plan.status}
 									</span>
 								</div>
-								<p class="mt-2 text-sm text-slate-600">
+								<p class="mt-2 text-sm text-muted-foreground">
 									{#if plan.beds || plan.baths}
 										{plan.beds ?? 0} beds · {plan.baths ?? 0} baths
 									{:else}
@@ -674,7 +665,9 @@
 									{/if}
 								</p>
 								{#if plan.heated_sf}
-									<p class="mt-1 text-sm text-slate-500">{plan.heated_sf.toLocaleString()} SF</p>
+									<p class="mt-1 text-sm text-muted-foreground">
+										{plan.heated_sf.toLocaleString()} SF
+									</p>
 								{/if}
 							</div>
 						</a>
@@ -685,8 +678,8 @@
 
 		<!-- Pagination -->
 		{#if plans?.meta && plans.meta.total_pages > 1}
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4">
-				<p class="text-sm text-slate-600 text-center sm:text-left">
+			<div class="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+				<p class="text-center text-sm text-muted-foreground sm:text-left">
 					Showing {(plans.meta.page - 1) * plans.meta.limit + 1} - {Math.min(
 						plans.meta.page * plans.meta.limit,
 						plans.meta.total
@@ -702,7 +695,7 @@
 						<ChevronLeft class="mr-1 h-4 w-4" />
 						<span class="hidden sm:inline">Previous</span>
 					</Button>
-					<span class="px-2 text-sm text-slate-600">
+					<span class="px-2 text-sm text-muted-foreground">
 						Page {plans.meta.page} of {plans.meta.total_pages}
 					</span>
 					<Button
@@ -729,7 +722,7 @@
 	cancelLabel="Cancel"
 	confirmVariant="destructive"
 	onConfirm={confirmBulkDelete}
-	onCancel={() => confirmDeleteOpen = false}
+	onCancel={() => (confirmDeleteOpen = false)}
 />
 
 <!-- Export Modal -->

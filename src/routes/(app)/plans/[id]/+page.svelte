@@ -52,7 +52,7 @@
 	let plan = $state<PlanWithFiles | null>(null);
 	let loading = $state(true);
 	let editing = $state(false);
-	
+
 	// Get active tab from URL query param, default to 'overview'
 	let activeTab = $derived<'overview' | 'files' | 'activity'>(
 		($page.url.searchParams.get('tab') as 'overview' | 'files' | 'activity') || 'overview'
@@ -362,18 +362,18 @@
 					{#if editing}
 						<Input bind:value={editForm.name} class="h-auto py-1 text-2xl font-bold" />
 					{:else}
-						<h1 class="text-3xl font-bold text-slate-900">{plan.name}</h1>
+						<h1 class="text-3xl font-bold text-card-foreground">{plan.name}</h1>
 					{/if}
-				<div class="mt-1 flex items-center gap-2">
-					{#if plan.status}
-						{@const StatusIcon = getStatusIcon(plan.status)}
-						<Badge variant="secondary" class={getStatusColor(plan.status)}>
-							<StatusIcon class="mr-1 h-3 w-3" />
-							{plan.status}
-						</Badge>
-					{/if}
-					<span class="text-sm text-slate-500">Slug: {plan.slug}</span>
-				</div>
+					<div class="mt-1 flex items-center gap-2">
+						{#if plan.status}
+							{@const StatusIcon = getStatusIcon(plan.status)}
+							<Badge variant="secondary" class={getStatusColor(plan.status)}>
+								<StatusIcon class="mr-1 h-3 w-3" />
+								{plan.status}
+							</Badge>
+						{/if}
+						<span class="text-sm text-muted-foreground">Slug: {plan.slug}</span>
+					</div>
 				</div>
 			</div>
 
@@ -411,37 +411,37 @@
 		</div>
 
 		<!-- Tabs -->
-		<div class="border-b border-slate-200">
+		<div class="border-b border-border">
 			<nav class="flex gap-1">
-			<button
-				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
-				'overview'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-slate-600 hover:text-slate-900'}"
-				onclick={() => goto(`?tab=overview`, { replaceState: true })}
-			>
-				<Image class="mr-2 inline h-4 w-4" />
-				Overview
-			</button>
-			<button
-				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab === 'files'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-slate-600 hover:text-slate-900'}"
-				onclick={() => goto(`?tab=files`, { replaceState: true })}
-			>
-				<FileText class="mr-2 inline h-4 w-4" />
-				Files
-			</button>
-			<button
-				class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
-				'activity'
-					? 'border-blue-600 text-blue-600'
-					: 'border-transparent text-slate-600 hover:text-slate-900'}"
-				onclick={() => goto(`?tab=activity`, { replaceState: true })}
-			>
-				<History class="mr-2 inline h-4 w-4" />
-				Activity
-			</button>
+				<button
+					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
+					'overview'
+						? 'border-blue-600 text-blue-600'
+						: 'border-transparent text-muted-foreground hover:text-card-foreground'}"
+					onclick={() => goto(`?tab=overview`, { replaceState: true })}
+				>
+					<Image class="mr-2 inline h-4 w-4" />
+					Overview
+				</button>
+				<button
+					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab === 'files'
+						? 'border-blue-600 text-blue-600'
+						: 'border-transparent text-muted-foreground hover:text-card-foreground'}"
+					onclick={() => goto(`?tab=files`, { replaceState: true })}
+				>
+					<FileText class="mr-2 inline h-4 w-4" />
+					Files
+				</button>
+				<button
+					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeTab ===
+					'activity'
+						? 'border-blue-600 text-blue-600'
+						: 'border-transparent text-muted-foreground hover:text-card-foreground'}"
+					onclick={() => goto(`?tab=activity`, { replaceState: true })}
+				>
+					<History class="mr-2 inline h-4 w-4" />
+					Activity
+				</button>
 			</nav>
 		</div>
 
@@ -449,12 +449,12 @@
 		{#if activeTab === 'overview'}
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<!-- Specs Section -->
-				<div class="rounded-lg border border-slate-200 bg-white p-6">
-					<h2 class="mb-4 text-lg font-semibold text-slate-900">Specifications</h2>
+				<div class="rounded-lg border border-border bg-card p-6">
+					<h2 class="mb-4 text-lg font-semibold text-card-foreground">Specifications</h2>
 					<div class="grid grid-cols-2 gap-4">
 						{#if editing}
 							<div>
-								<label for="type-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="type-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Type</label
 								>
 								<select
@@ -468,7 +468,7 @@
 								</select>
 							</div>
 							<div>
-								<label for="style-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="style-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Style</label
 								>
 								<select
@@ -485,31 +485,31 @@
 								</select>
 							</div>
 							<div>
-								<label for="beds-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="beds-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Beds</label
 								>
 								<Input id="beds-input" type="number" bind:value={editForm.beds} />
 							</div>
 							<div>
-								<label for="baths-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="baths-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Baths</label
 								>
 								<Input id="baths-input" type="number" bind:value={editForm.baths} />
 							</div>
 							<div>
-								<label for="half-baths-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="half-baths-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Half Baths</label
 								>
 								<Input id="half-baths-input" type="number" bind:value={editForm.half_baths} />
 							</div>
 							<div>
-								<label for="heated-sf-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="heated-sf-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Heated SF</label
 								>
 								<Input id="heated-sf-input" type="number" bind:value={editForm.heated_sf} />
 							</div>
 							<div class="col-span-2">
-								<label for="notes-input" class="mb-1 block text-sm font-medium text-slate-700"
+								<label for="notes-input" class="mb-1 block text-sm font-medium text-foreground"
 									>Notes</label
 								>
 								<textarea
@@ -521,35 +521,35 @@
 							</div>
 						{:else}
 							<div>
-								<span class="text-sm text-slate-500">Type</span>
+								<span class="text-sm text-muted-foreground">Type</span>
 								<p class="font-medium">{plan.type?.replace('_', ' ') ?? 'Not specified'}</p>
 							</div>
 							<div>
-								<span class="text-sm text-slate-500">Style</span>
+								<span class="text-sm text-muted-foreground">Style</span>
 								<p class="font-medium capitalize">{plan.style ?? 'Not specified'}</p>
 							</div>
 							<div>
-								<span class="text-sm text-slate-500">Beds</span>
+								<span class="text-sm text-muted-foreground">Beds</span>
 								<p class="font-medium">{plan.beds ?? '-'}</p>
 							</div>
 							<div>
-								<span class="text-sm text-slate-500">Baths</span>
+								<span class="text-sm text-muted-foreground">Baths</span>
 								<p class="font-medium">
 									{plan.baths ?? '-'}{plan.half_baths ? `.${plan.half_baths}` : ''}
 								</p>
 							</div>
 							<div>
-								<span class="text-sm text-slate-500">Heated SF</span>
+								<span class="text-sm text-muted-foreground">Heated SF</span>
 								<p class="font-medium">{plan.heated_sf?.toLocaleString() ?? '-'}</p>
 							</div>
 							<div>
-								<span class="text-sm text-slate-500">Total SF</span>
+								<span class="text-sm text-muted-foreground">Total SF</span>
 								<p class="font-medium">{plan.total_sf?.toLocaleString() ?? '-'}</p>
 							</div>
 							{#if plan.notes}
 								<div class="col-span-2">
-									<span class="text-sm text-slate-500">Notes</span>
-									<p class="mt-1 text-slate-700">{plan.notes}</p>
+									<span class="text-sm text-muted-foreground">Notes</span>
+									<p class="mt-1 text-foreground">{plan.notes}</p>
 								</div>
 							{/if}
 						{/if}
@@ -557,8 +557,8 @@
 				</div>
 
 				<!-- Website Images Section -->
-				<div class="rounded-lg border border-slate-200 bg-white p-6">
-					<h2 class="mb-4 text-lg font-semibold text-slate-900">Website Images</h2>
+				<div class="rounded-lg border border-border bg-card p-6">
+					<h2 class="mb-4 text-lg font-semibold text-card-foreground">Website Images</h2>
 					<div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
 						{#each websiteSlots as slot}
 							{@const file = plan.files.website[slot.key as keyof typeof plan.files.website]}
@@ -566,19 +566,15 @@
 								<!-- Filled slot with image preview and actions -->
 								{@const imageUrl = slotImageUrls[slot.key]}
 								<div
-									class="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+									class="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
 								>
 									<button class="h-full w-full" onclick={() => openImagePreview(file)}>
 										{#if imageUrl}
-											<img
-												src={imageUrl}
-												alt={slot.label}
-												class="h-full w-full object-cover"
-											/>
+											<img src={imageUrl} alt={slot.label} class="h-full w-full object-cover" />
 										{:else}
 											<div class="flex h-full w-full flex-col items-center justify-center">
-												<Image class="mx-auto h-12 w-12 text-slate-400" />
-												<p class="mt-2 text-xs text-slate-400">Loading...</p>
+												<Image class="mx-auto h-12 w-12 text-muted-foreground" />
+												<p class="mt-2 text-xs text-muted-foreground">Loading...</p>
 											</div>
 										{/if}
 									</button>
@@ -618,17 +614,17 @@
 							{:else}
 								<!-- Empty slot -->
 								<button
-									class="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 p-4 transition-colors hover:border-blue-400 hover:bg-blue-50"
+									class="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-muted p-4 transition-colors hover:border-blue-400 hover:bg-blue-50"
 									onclick={() => openSlotUpload(slot.key, slot.label)}
 								>
 									<div class="text-center">
 										<div
 											class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 transition-colors group-hover:bg-blue-200"
 										>
-											<Upload class="h-4 w-4 text-slate-500" />
+											<Upload class="h-4 w-4 text-muted-foreground" />
 										</div>
-										<p class="text-xs text-slate-500">{slot.label}</p>
-										<p class="mt-1 text-[10px] text-slate-400">Click to upload</p>
+										<p class="text-xs text-muted-foreground">{slot.label}</p>
+										<p class="mt-1 text-[10px] text-muted-foreground">Click to upload</p>
 									</div>
 								</button>
 							{/if}
@@ -639,27 +635,27 @@
 		{:else if activeTab === 'files'}
 			<FilesTab {planId} onUploadComplete={loadPlan} />
 		{:else if activeTab === 'activity'}
-			<div class="rounded-lg border border-slate-200 bg-white">
-				<div class="border-b border-slate-200 p-6">
-					<h2 class="text-lg font-semibold text-slate-900">Activity History</h2>
+			<div class="rounded-lg border border-border bg-card">
+				<div class="border-b border-border p-6">
+					<h2 class="text-lg font-semibold text-card-foreground">Activity History</h2>
 				</div>
 				{#if activities}
 					<div class="divide-y divide-slate-100">
 						{#each activities.data as activity}
 							<div class="flex items-start gap-3 p-4">
 								<div
-									class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
+									class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted"
 								>
-									<span class="text-sm font-medium text-slate-600">
+									<span class="text-sm font-medium text-muted-foreground">
 										{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
 									</span>
 								</div>
 								<div class="flex-1">
-									<p class="text-sm text-slate-900">
+									<p class="text-sm text-card-foreground">
 										<span class="font-medium">{activity.user?.name ?? 'Unknown'}</span>
-										<span class="text-slate-600">{activity.action.replace(/\./g, ' ')}</span>
+										<span class="text-muted-foreground">{activity.action.replace(/\./g, ' ')}</span>
 									</p>
-									<p class="mt-1 text-xs text-slate-500">
+									<p class="mt-1 text-xs text-muted-foreground">
 										{new Date(activity.created_at).toLocaleString()}
 									</p>
 								</div>
@@ -667,7 +663,7 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="p-8 text-center text-slate-500">Loading activity...</div>
+					<div class="p-8 text-center text-muted-foreground">Loading activity...</div>
 				{/if}
 			</div>
 		{/if}
@@ -680,13 +676,11 @@
 		<DialogHeader>
 			<DialogTitle>{previewFile?.filename ?? 'Image Preview'}</DialogTitle>
 		</DialogHeader>
-		<div
-			class="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-slate-100"
-		>
+		<div class="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-muted">
 			{#if previewLoading}
 				<div class="flex flex-col items-center gap-2">
-					<Loader2 class="h-8 w-8 animate-spin text-slate-400" />
-					<p class="text-sm text-slate-500">Loading image...</p>
+					<Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
+					<p class="text-sm text-muted-foreground">Loading image...</p>
 				</div>
 			{:else if previewUrl}
 				<img
@@ -696,8 +690,8 @@
 				/>
 			{:else}
 				<div class="text-center">
-					<Image class="mx-auto h-12 w-12 text-slate-400" />
-					<p class="mt-2 text-sm text-slate-500">Failed to load image</p>
+					<Image class="mx-auto h-12 w-12 text-muted-foreground" />
+					<p class="mt-2 text-sm text-muted-foreground">Failed to load image</p>
 				</div>
 			{/if}
 		</div>
@@ -718,20 +712,44 @@
 					Upload {uploadSlotLabel}
 				{/if}
 			</DialogTitle>
-			<DialogDescription>Choose an image file to upload. Max size: 50MB.</DialogDescription>
+			<DialogDescription>
+				<div class="space-y-1">
+					<p>Choose an image file to upload</p>
+					<p class="text-xs text-muted-foreground">
+						Max 5MB • Resized to max 4000px • Output: JPEG 90% quality
+					</p>
+					<p class="text-xs text-amber-600">PNG with transparency → saved to "Other Files"</p>
+				</div>
+			</DialogDescription>
 		</DialogHeader>
 		<div class="space-y-4 py-4">
 			<input
 				type="file"
-				accept="image/*"
+				accept=".jpg,.jpeg,.png,image/jpeg,image/png"
 				onchange={handleSlotFileSelect}
-				class="block w-full text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
+				class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
 			/>
 			{#if uploadFile}
-				<p class="text-sm text-slate-600">
-					Selected: <span class="font-medium">{uploadFile.name}</span>
-					({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
-				</p>
+				<div class="space-y-1 text-sm">
+					<p class="text-muted-foreground">
+						Selected: <span class="font-medium">{uploadFile.name}</span>
+					</p>
+					<p
+						class={uploadFile.size > 5 * 1024 * 1024
+							? 'font-medium text-red-600'
+							: 'text-muted-foreground'}
+					>
+						Size: {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+						{#if uploadFile.size > 5 * 1024 * 1024}
+							(⚠️ Exceeds 5MB limit - will be compressed)
+						{/if}
+					</p>
+					{#if uploadFile.name.match(/\.png$/i)}
+						<p class="text-xs text-amber-600">
+							⚠️ PNG file will be converted to JPEG (transparency → white background)
+						</p>
+					{/if}
+				</div>
 			{/if}
 		</div>
 		<DialogFooter>
@@ -793,5 +811,5 @@
 	cancelLabel="Cancel"
 	confirmVariant="destructive"
 	onConfirm={confirmDelete}
-	onCancel={() => deletePlanOpen = false}
+	onCancel={() => (deletePlanOpen = false)}
 />

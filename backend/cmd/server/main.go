@@ -165,6 +165,10 @@ func main() {
 	// Import routes (admin-only)
 	admin.Post("/import/csv/preview", importHandler.PreviewCSV)
 	admin.Post("/import/csv", importHandler.ImportCSV)
+	admin.Get("/import/recent", importHandler.GetRecentImports)
+
+	// Bulk file upload (admin-only)
+	admin.Post("/plans/bulk-files", planHandler.BulkUploadFiles)
 
 	// SFTP routes (admin-only)
 	admin.Get("/sftp/status", sftpHandler.GetStatus)

@@ -13,7 +13,19 @@
 	} from '$lib/components/ui/dialog';
 
 	import { auth } from '$lib/stores';
-	import { getUsers, createUser, updateUser, deleteUser, getSFTPStatus, getUserSFTP, generateSFTP, rotateSFTP, revokeSFTP, updateSFTPPermission, deleteSFTP } from '$lib/api';
+	import {
+		getUsers,
+		createUser,
+		updateUser,
+		deleteUser,
+		getSFTPStatus,
+		getUserSFTP,
+		generateSFTP,
+		rotateSFTP,
+		revokeSFTP,
+		updateSFTPPermission,
+		deleteSFTP
+	} from '$lib/api';
 	import { toast } from 'svelte-sonner';
 	import {
 		Users,
@@ -41,6 +53,9 @@
 	import type { User, SFTPCredentials, SFTPStatus } from '$lib/types';
 	import EmptyState from '$lib/components/ui/empty-state/EmptyState.svelte';
 	import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
+	import ThemeToggle from '$lib/components/ui/theme-toggle/ThemeToggle.svelte';
+	import { Sun, Moon, Monitor } from '@lucide/svelte';
+	import { theme, type Theme } from '$lib/stores/theme';
 
 	// Data
 	let users = $state<User[]>([]);
@@ -308,23 +323,20 @@
 	}
 
 	function getRoleColor(role: string) {
-		return role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700';
+		return role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-muted text-foreground';
 	}
 
 	// Export preset reference
 	let expandedPreset = $state<string | null>(null);
 
-	import {
-		EXPORT_PRESETS,
-		EXPORT_PRESET_FIELDS,
-		EXPORT_FIELDS
-	} from '$lib/api';
+	import { EXPORT_PRESETS, EXPORT_PRESET_FIELDS, EXPORT_FIELDS } from '$lib/api';
 
 	const exportPresets = [
 		{
 			id: EXPORT_PRESETS.wpAllImport,
 			name: 'WP All Import',
-			description: 'Optimized for WordPress All Import plugin with all required fields and image slots',
+			description:
+				'Optimized for WordPress All Import plugin with all required fields and image slots',
 			fields: EXPORT_PRESET_FIELDS[EXPORT_PRESETS.wpAllImport]
 		},
 		{
@@ -394,29 +406,87 @@
 	function togglePreset(presetId: string) {
 		expandedPreset = expandedPreset === presetId ? null : presetId;
 	}
+
+	const themeOptions = [
+		{ value: 'system' as Theme, label: 'System' },
+		{ value: 'light' as Theme, label: 'Light' },
+		{ value: 'dark' as Theme, label: 'Dark' }
+	];
 </script>
 
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-3xl font-bold text-slate-900">Settings</h1>
-			<p class="mt-1 text-slate-600">Manage users and system settings</p>
+			<h1 class="text-3xl font-bold text-card-foreground">Settings</h1>
+			<p class="mt-1 text-muted-foreground">Manage users and system settings</p>
+		</div>
+	</div>
+
+	<!-- Appearance Settings (All Users) -->
+	<div class="rounded-lg border border-border bg-card dark:border-slate-700 dark:bg-slate-800">
+		<div class="border-b border-border p-6 dark:border-slate-700">
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30"
+				>
+					{#if $theme.theme === 'system'}
+						<Monitor class="h-5 w-5 text-purple-600 dark:text-purple-400" />
+					{:else if $theme.theme === 'light'}
+						<Sun class="h-5 w-5 text-purple-600 dark:text-purple-400" />
+					{:else}
+						<Moon class="h-5 w-5 text-purple-600 dark:text-purple-400" />
+					{/if}
+				</div>
+				<div>
+					<h2 class="text-lg font-semibold text-card-foreground dark:text-slate-100">Appearance</h2>
+					<p class="text-sm text-muted-foreground dark:text-muted-foreground">
+						Customize your visual experience
+					</p>
+				</div>
+			</div>
+		</div>
+		<div class="p-6">
+			<div class="space-y-4">
+				<div>
+					<h3 class="mb-2 text-sm font-medium text-foreground dark:text-slate-300">Theme Mode</h3>
+					<p class="mb-3 text-sm text-muted-foreground dark:text-muted-foreground">
+						Choose your preferred color theme. System will follow your device settings.
+					</p>
+					<div class="flex flex-wrap gap-2">
+						{#each themeOptions as t}
+							<button
+								type="button"
+								class="rounded-lg border px-4 py-2 text-sm font-medium transition-colors {$theme.theme ===
+								t.value
+									? 'border-purple-500 bg-purple-50 text-purple-700 dark:border-purple-400 dark:bg-purple-900/30 dark:text-purple-300'
+									: 'border-border text-muted-foreground hover:bg-muted dark:border-slate-600 dark:text-muted-foreground dark:hover:bg-slate-700'}"
+								onclick={() => theme.setTheme(t.value)}
+							>
+								{t.label}
+								{#if $theme.theme === t.value}
+									<span class="ml-1">Active</span>
+								{/if}
+							</button>
+						{/each}
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 
 	<!-- Admin-only: User Management -->
 	{#if $auth?.role === 'admin'}
-		<div class="rounded-lg border border-slate-200 bg-white">
+		<div class="rounded-lg border border-border bg-card">
 			<!-- Section Header -->
-			<div class="flex items-center justify-between border-b border-slate-200 p-6">
+			<div class="flex items-center justify-between border-b border-border p-6">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
 						<Users class="h-5 w-5 text-blue-600" />
 					</div>
 					<div>
-						<h2 class="text-lg font-semibold text-slate-900">User Management</h2>
-						<p class="text-sm text-slate-600">Manage system users and permissions</p>
+						<h2 class="text-lg font-semibold text-card-foreground">User Management</h2>
+						<p class="text-sm text-muted-foreground">Manage system users and permissions</p>
 					</div>
 				</div>
 				<Button onclick={openCreateDialog}>
@@ -428,94 +498,104 @@
 			<!-- Users List -->
 			{#if loading}
 				<div class="p-8 text-center">
-					<Loader2 class="mx-auto h-8 w-8 animate-spin text-slate-400" />
-					<p class="mt-2 text-sm text-slate-500">Loading users...</p>
+					<Loader2 class="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+					<p class="mt-2 text-sm text-muted-foreground">Loading users...</p>
 				</div>
 			{:else if users.length === 0}
 				<div class="p-8 text-center">
 					<Users class="mx-auto mb-4 h-12 w-12 text-slate-300" />
-					<h3 class="mb-2 text-lg font-medium text-slate-900">No users found</h3>
-					<p class="text-slate-600">Add your first user to get started</p>
+					<h3 class="mb-2 text-lg font-medium text-card-foreground">No users found</h3>
+					<p class="text-muted-foreground">Add your first user to get started</p>
 				</div>
 			{:else}
 				<div class="divide-y divide-slate-100">
-				{#each users as user}
-					{@const RoleIcon = getRoleIcon(user.role)}
-					<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-slate-50">
-						<div class="flex items-center gap-3 min-w-0">
-							<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
-								<span class="text-sm font-medium text-slate-600">
-									{user.name.charAt(0).toUpperCase()}
-								</span>
+					{#each users as user}
+						{@const RoleIcon = getRoleIcon(user.role)}
+						<div
+							class="flex flex-col gap-3 p-4 hover:bg-muted sm:flex-row sm:items-center sm:justify-between"
+						>
+							<div class="flex min-w-0 items-center gap-3">
+								<div
+									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted"
+								>
+									<span class="text-sm font-medium text-muted-foreground">
+										{user.name.charAt(0).toUpperCase()}
+									</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="truncate font-medium text-card-foreground">{user.name}</p>
+									<p class="truncate text-sm text-muted-foreground">{user.email}</p>
+								</div>
 							</div>
-							<div class="min-w-0 flex-1">
-								<p class="font-medium text-slate-900 truncate">{user.name}</p>
-								<p class="text-sm text-slate-500 truncate">{user.email}</p>
+							<div class="flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
+								<div class="flex items-center gap-2">
+									<span
+										class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {getRoleColor(
+											user.role
+										)}"
+									>
+										<RoleIcon class="h-3 w-3" />
+										{user.role}
+									</span>
+									{#if user.id === $auth?.id}
+										<span class="text-xs text-muted-foreground">(You)</span>
+									{/if}
+								</div>
+								<div class="flex items-center gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										onclick={() => openEditDialog(user)}
+										disabled={user.id === $auth?.id}
+										title={user.id === $auth?.id ? 'Cannot edit yourself' : 'Edit user'}
+									>
+										<Edit2 class="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="text-red-600 hover:text-red-700"
+										onclick={() => openDeleteDialog(user)}
+										disabled={user.id === $auth?.id}
+										title={user.id === $auth?.id ? 'Cannot delete yourself' : 'Delete user'}
+									>
+										<Trash2 class="h-4 w-4" />
+									</Button>
+								</div>
 							</div>
 						</div>
-						<div class="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
-							<div class="flex items-center gap-2">
-								<span
-									class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {getRoleColor(
-										user.role
-									)}"
-								>
-									<RoleIcon class="h-3 w-3" />
-									{user.role}
-								</span>
-								{#if user.id === $auth?.id}
-									<span class="text-xs text-slate-400">(You)</span>
-								{/if}
-							</div>
-							<div class="flex items-center gap-1">
-								<Button
-									variant="ghost"
-									size="sm"
-									onclick={() => openEditDialog(user)}
-									disabled={user.id === $auth?.id}
-									title={user.id === $auth?.id ? 'Cannot edit yourself' : 'Edit user'}
-								>
-									<Edit2 class="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="text-red-600 hover:text-red-700"
-									onclick={() => openDeleteDialog(user)}
-									disabled={user.id === $auth?.id}
-									title={user.id === $auth?.id ? 'Cannot delete yourself' : 'Delete user'}
-								>
-									<Trash2 class="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
-					</div>
-				{/each}
+					{/each}
 				</div>
 			{/if}
 		</div>
 
 		<!-- SFTP Credentials Management -->
 		{#if sftpStatus?.configured}
-			<div class="rounded-lg border border-slate-200 bg-white">
-				<div class="border-b border-slate-200 p-6">
+			<div class="rounded-lg border border-border bg-card">
+				<div class="border-b border-border p-6">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
 							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
 								<Server class="h-5 w-5 text-orange-600" />
 							</div>
 							<div>
-								<h2 class="text-lg font-semibold text-slate-900">SFTP Access</h2>
-								<p class="text-sm text-slate-600">Manage SFTP credentials for user file access</p>
+								<h2 class="text-lg font-semibold text-card-foreground">SFTP Access</h2>
+								<p class="text-sm text-muted-foreground">
+									Manage SFTP credentials for user file access
+								</p>
 							</div>
 						</div>
 						{#if sftpStatus.healthy}
-							<span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+							<span
+								class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"
+							>
 								<Check class="h-3 w-3" />
 								Connected
 							</span>
 						{:else}
-							<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+							<span
+								class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700"
+							>
 								<X class="h-3 w-3" />
 								Disconnected
 							</span>
@@ -524,60 +604,76 @@
 				</div>
 				{#if loading}
 					<div class="p-8 text-center">
-						<Loader2 class="mx-auto h-8 w-8 animate-spin text-slate-400" />
-						<p class="mt-2 text-sm text-slate-500">Loading users...</p>
+						<Loader2 class="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+						<p class="mt-2 text-sm text-muted-foreground">Loading users...</p>
 					</div>
 				{:else}
-				<div class="divide-y divide-slate-100">
-					{#each users as user}
-						<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-slate-50">
-							<div class="flex items-center gap-3 min-w-0">
-								<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
-									<span class="text-sm font-medium text-slate-600">
-										{user.name.charAt(0).toUpperCase()}
-									</span>
-								</div>
-								<div class="min-w-0 flex-1">
-									<p class="font-medium text-slate-900 truncate">{user.name}</p>
-									<p class="text-sm text-slate-500 truncate">{user.email}</p>
-								</div>
-								{#if sftpCredentials[user.id]}
-									<span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {sftpCredentials[user.id].permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
-										<Key class="h-3 w-3" />
-										{sftpCredentials[user.id].permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
-									</span>
-								{:else}
-									<span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
-										No SFTP
-									</span>
-								{/if}
-							</div>
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={() => openSFTPDialog(user)}
-								class="w-full sm:w-auto"
+					<div class="divide-y divide-slate-100">
+						{#each users as user}
+							<div
+								class="flex flex-col gap-3 p-4 hover:bg-muted sm:flex-row sm:items-center sm:justify-between"
 							>
-								<Key class="mr-2 h-4 w-4" />
-								{sftpCredentials[user.id] ? 'Manage' : 'Create'}
-							</Button>
-						</div>
-					{/each}
-				</div>
+								<div class="flex min-w-0 items-center gap-3">
+									<div
+										class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted"
+									>
+										<span class="text-sm font-medium text-muted-foreground">
+											{user.name.charAt(0).toUpperCase()}
+										</span>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate font-medium text-card-foreground">{user.name}</p>
+										<p class="truncate text-sm text-muted-foreground">{user.email}</p>
+									</div>
+									{#if sftpCredentials[user.id]}
+										<span
+											class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium {sftpCredentials[
+												user.id
+											].permission === 'readwrite'
+												? 'bg-blue-100 text-blue-700'
+												: 'bg-muted text-foreground'}"
+										>
+											<Key class="h-3 w-3" />
+											{sftpCredentials[user.id].permission === 'readwrite'
+												? 'Read/Write'
+												: 'Read Only'}
+										</span>
+									{:else}
+										<span
+											class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+										>
+											No SFTP
+										</span>
+									{/if}
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onclick={() => openSFTPDialog(user)}
+									class="w-full sm:w-auto"
+								>
+									<Key class="mr-2 h-4 w-4" />
+									{sftpCredentials[user.id] ? 'Manage' : 'Create'}
+								</Button>
+							</div>
+						{/each}
+					</div>
 				{/if}
 			</div>
 		{/if}
 
 		<!-- Export Preset Reference -->
-		<div class="rounded-lg border border-slate-200 bg-white">
-			<div class="border-b border-slate-200 p-6">
+		<div class="rounded-lg border border-border bg-card">
+			<div class="border-b border-border p-6">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
 						<FileSpreadsheet class="h-5 w-5 text-emerald-600" />
 					</div>
 					<div>
-						<h2 class="text-lg font-semibold text-slate-900">Export Preset Reference</h2>
-						<p class="text-sm text-slate-600">Available CSV export presets and field definitions</p>
+						<h2 class="text-lg font-semibold text-card-foreground">Export Preset Reference</h2>
+						<p class="text-sm text-muted-foreground">
+							Available CSV export presets and field definitions
+						</p>
 					</div>
 				</div>
 			</div>
@@ -589,24 +685,24 @@
 							onclick={() => togglePreset(preset.id)}
 						>
 							<div>
-								<h3 class="font-medium text-slate-900">{preset.name}</h3>
-								<p class="text-sm text-slate-500">{preset.description}</p>
+								<h3 class="font-medium text-card-foreground">{preset.name}</h3>
+								<p class="text-sm text-muted-foreground">{preset.description}</p>
 							</div>
 							{#if expandedPreset === preset.id}
-								<ChevronUp class="h-5 w-5 text-slate-400" />
+								<ChevronUp class="h-5 w-5 text-muted-foreground" />
 							{:else}
-								<ChevronDown class="h-5 w-5 text-slate-400" />
+								<ChevronDown class="h-5 w-5 text-muted-foreground" />
 							{/if}
 						</button>
 						{#if expandedPreset === preset.id}
-							<div class="mt-3 rounded-lg bg-slate-50 p-3">
-								<p class="mb-2 text-xs font-medium tracking-wider text-slate-500 uppercase">
+							<div class="mt-3 rounded-lg bg-muted p-3">
+								<p class="mb-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
 									Included Fields ({preset.fields.length})
 								</p>
 								<div class="flex flex-wrap gap-2">
 									{#each preset.fields as field}
 										<span
-											class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 shadow-sm"
+											class="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm"
 										>
 											{field}
 										</span>
@@ -617,23 +713,23 @@
 					</div>
 				{/each}
 			</div>
-			<div class="border-t border-slate-200 p-4">
-				<p class="mb-3 text-sm font-medium text-slate-700">All Available Fields</p>
+			<div class="border-t border-border p-4">
+				<p class="mb-3 text-sm font-medium text-foreground">All Available Fields</p>
 				<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{#each allExportFields as field}
-						<div class="rounded-md bg-slate-50 p-2">
-							<p class="text-sm font-medium text-slate-700">{field.label}</p>
-							<p class="text-xs text-slate-500">{field.description}</p>
+						<div class="rounded-md bg-muted p-2">
+							<p class="text-sm font-medium text-foreground">{field.label}</p>
+							<p class="text-xs text-muted-foreground">{field.description}</p>
 						</div>
 					{/each}
 				</div>
 			</div>
 		</div>
 	{:else}
-		<div class="rounded-lg border border-slate-200 bg-white p-8 text-center">
+		<div class="rounded-lg border border-border bg-card p-8 text-center">
 			<Shield class="mx-auto mb-4 h-12 w-12 text-slate-300" />
-			<h3 class="mb-2 text-lg font-medium text-slate-900">Admin Access Required</h3>
-			<p class="text-slate-600">Only administrators can access system settings</p>
+			<h3 class="mb-2 text-lg font-medium text-card-foreground">Admin Access Required</h3>
+			<p class="text-muted-foreground">Only administrators can access system settings</p>
 		</div>
 	{/if}
 </div>
@@ -742,7 +838,7 @@
 			<div class="space-y-2">
 				<Label for="edit-password">
 					New Password
-					<span class="text-xs text-slate-500">(leave blank to keep current)</span>
+					<span class="text-xs text-muted-foreground">(leave blank to keep current)</span>
 				</Label>
 				<Input
 					id="edit-password"
@@ -776,7 +872,7 @@
 	cancelLabel="Cancel"
 	confirmVariant="destructive"
 	onConfirm={handleDelete}
-	onCancel={() => deleteDialogOpen = false}
+	onCancel={() => (deleteDialogOpen = false)}
 />
 
 <!-- SFTP Credentials Dialog -->
@@ -787,15 +883,15 @@
 		</DialogHeader>
 		<div class="space-y-4 py-4">
 			{#if sftpSelectedUser}
-				<div class="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+				<div class="flex items-center gap-3 rounded-lg bg-muted p-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200">
-						<span class="text-sm font-medium text-slate-600">
+						<span class="text-sm font-medium text-muted-foreground">
 							{sftpSelectedUser.name.charAt(0).toUpperCase()}
 						</span>
 					</div>
 					<div>
-						<p class="font-medium text-slate-900">{sftpSelectedUser.name}</p>
-						<p class="text-sm text-slate-500">{sftpSelectedUser.email}</p>
+						<p class="font-medium text-card-foreground">{sftpSelectedUser.name}</p>
+						<p class="text-sm text-muted-foreground">{sftpSelectedUser.email}</p>
 					</div>
 				</div>
 
@@ -805,50 +901,75 @@
 						<p class="mb-3 text-sm font-medium text-green-800">New SFTP Credentials Generated</p>
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Host:</span>
+								<span class="text-sm text-muted-foreground">Host:</span>
 								<div class="flex items-center gap-2">
-									<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.host}</code>
-									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.host)}>
+									<code class="rounded bg-card px-2 py-1 text-sm">{newCredentials.host}</code>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-6 w-6 p-0"
+										onclick={() => copyToClipboard(newCredentials!.host)}
+									>
 										<Copy class="h-3 w-3" />
 									</Button>
 								</div>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Port:</span>
-								<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.port}</code>
+								<span class="text-sm text-muted-foreground">Port:</span>
+								<code class="rounded bg-card px-2 py-1 text-sm">{newCredentials.port}</code>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Username:</span>
+								<span class="text-sm text-muted-foreground">Username:</span>
 								<div class="flex items-center gap-2">
-									<code class="rounded bg-white px-2 py-1 text-sm">{newCredentials.username}</code>
-									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.username)}>
+									<code class="rounded bg-card px-2 py-1 text-sm">{newCredentials.username}</code>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-6 w-6 p-0"
+										onclick={() => copyToClipboard(newCredentials!.username)}
+									>
 										<Copy class="h-3 w-3" />
 									</Button>
 								</div>
 							</div>
 							{#if newCredentials.password}
 								<div class="flex items-center justify-between">
-									<span class="text-sm text-slate-600">Password:</span>
+									<span class="text-sm text-muted-foreground">Password:</span>
 									<div class="flex items-center gap-2">
-										<code class="rounded bg-white px-2 py-1 text-sm">
+										<code class="rounded bg-card px-2 py-1 text-sm">
 											{showPassword ? newCredentials.password : '••••••••••••••••'}
 										</code>
-										<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => showPassword = !showPassword}>
+										<Button
+											variant="ghost"
+											size="sm"
+											class="h-6 w-6 p-0"
+											onclick={() => (showPassword = !showPassword)}
+										>
 											{#if showPassword}
 												<EyeOff class="h-3 w-3" />
 											{:else}
 												<Eye class="h-3 w-3" />
 											{/if}
 										</Button>
-										<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(newCredentials!.password || '')}>
+										<Button
+											variant="ghost"
+											size="sm"
+											class="h-6 w-6 p-0"
+											onclick={() => copyToClipboard(newCredentials!.password || '')}
+										>
 											<Copy class="h-3 w-3" />
 										</Button>
 									</div>
 								</div>
 							{/if}
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Permission:</span>
-								<span class="rounded-full px-2 py-0.5 text-xs font-medium {newCredentials.permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
+								<span class="text-sm text-muted-foreground">Permission:</span>
+								<span
+									class="rounded-full px-2 py-0.5 text-xs font-medium {newCredentials.permission ===
+									'readwrite'
+										? 'bg-blue-100 text-blue-700'
+										: 'bg-muted text-foreground'}"
+								>
 									{newCredentials.permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
 								</span>
 							</div>
@@ -859,35 +980,59 @@
 					</div>
 				{:else if sftpCredentials[sftpSelectedUser.id]}
 					<!-- Existing Credentials Management -->
-					<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-						<p class="mb-3 text-sm font-medium text-slate-900">SFTP Connection Details</p>
+					<div class="rounded-lg border border-border bg-muted p-4">
+						<p class="mb-3 text-sm font-medium text-card-foreground">SFTP Connection Details</p>
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Host:</span>
+								<span class="text-sm text-muted-foreground">Host:</span>
 								<div class="flex items-center gap-2">
-									<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].host}</code>
-									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].host)}>
+									<code class="rounded bg-card px-2 py-1 text-sm"
+										>{sftpCredentials[sftpSelectedUser.id].host}</code
+									>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-6 w-6 p-0"
+										onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].host)}
+									>
 										<Copy class="h-3 w-3" />
 									</Button>
 								</div>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Port:</span>
-								<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].port}</code>
+								<span class="text-sm text-muted-foreground">Port:</span>
+								<code class="rounded bg-card px-2 py-1 text-sm"
+									>{sftpCredentials[sftpSelectedUser.id].port}</code
+								>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Username:</span>
+								<span class="text-sm text-muted-foreground">Username:</span>
 								<div class="flex items-center gap-2">
-									<code class="rounded bg-white px-2 py-1 text-sm">{sftpCredentials[sftpSelectedUser.id].username}</code>
-									<Button variant="ghost" size="sm" class="h-6 w-6 p-0" onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].username)}>
+									<code class="rounded bg-card px-2 py-1 text-sm"
+										>{sftpCredentials[sftpSelectedUser.id].username}</code
+									>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-6 w-6 p-0"
+										onclick={() => copyToClipboard(sftpCredentials[sftpSelectedUser!.id].username)}
+									>
 										<Copy class="h-3 w-3" />
 									</Button>
 								</div>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-sm text-slate-600">Permission:</span>
-								<span class="rounded-full px-2 py-0.5 text-xs font-medium {sftpCredentials[sftpSelectedUser.id].permission === 'readwrite' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
-									{sftpCredentials[sftpSelectedUser.id].permission === 'readwrite' ? 'Read/Write' : 'Read Only'}
+								<span class="text-sm text-muted-foreground">Permission:</span>
+								<span
+									class="rounded-full px-2 py-0.5 text-xs font-medium {sftpCredentials[
+										sftpSelectedUser.id
+									].permission === 'readwrite'
+										? 'bg-blue-100 text-blue-700'
+										: 'bg-muted text-foreground'}"
+								>
+									{sftpCredentials[sftpSelectedUser.id].permission === 'readwrite'
+										? 'Read/Write'
+										: 'Read Only'}
 								</span>
 							</div>
 						</div>
@@ -899,12 +1044,20 @@
 							Rotate Password
 						</Button>
 						{#if sftpCredentials[sftpSelectedUser.id].permission === 'readwrite'}
-							<Button variant="outline" onclick={() => handleUpdateSFTPPermission('read')} disabled={sftpLoading}>
+							<Button
+								variant="outline"
+								onclick={() => handleUpdateSFTPPermission('read')}
+								disabled={sftpLoading}
+							>
 								<Lock class="mr-2 h-4 w-4" />
 								Set Read-Only
 							</Button>
 						{:else}
-							<Button variant="outline" onclick={() => handleUpdateSFTPPermission('readwrite')} disabled={sftpLoading}>
+							<Button
+								variant="outline"
+								onclick={() => handleUpdateSFTPPermission('readwrite')}
+								disabled={sftpLoading}
+							>
 								<Unlock class="mr-2 h-4 w-4" />
 								Allow Write
 							</Button>
@@ -923,9 +1076,13 @@
 					</div>
 				{:else}
 					<!-- Create New Credentials -->
-					<p class="text-sm text-slate-600">This user doesn't have SFTP credentials yet.</p>
+					<p class="text-sm text-muted-foreground">This user doesn't have SFTP credentials yet.</p>
 					<div class="grid grid-cols-2 gap-2">
-						<Button variant="outline" onclick={() => handleGenerateSFTP('read')} disabled={sftpLoading}>
+						<Button
+							variant="outline"
+							onclick={() => handleGenerateSFTP('read')}
+							disabled={sftpLoading}
+						>
 							<Lock class="mr-2 h-4 w-4" />
 							Create Read-Only
 						</Button>

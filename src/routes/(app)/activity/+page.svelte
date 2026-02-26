@@ -137,16 +137,16 @@
 	<!-- Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-3xl font-bold text-slate-900">Activity Log</h1>
-			<p class="mt-1 text-slate-600">Track changes and actions across the system</p>
+			<h1 class="text-3xl font-bold text-card-foreground">Activity Log</h1>
+			<p class="mt-1 text-muted-foreground">Track changes and actions across the system</p>
 		</div>
 	</div>
 
 	<!-- Filters -->
-	<div class="rounded-lg border border-slate-200 bg-white p-4">
+	<div class="rounded-lg border border-border bg-card p-4">
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<div class="space-y-2">
-				<span class="text-sm font-medium text-slate-700">User</span>
+				<span class="text-sm font-medium text-foreground">User</span>
 				<select
 					bind:value={userFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -160,7 +160,7 @@
 			</div>
 
 			<div class="space-y-2">
-				<span class="text-sm font-medium text-slate-700">Action</span>
+				<span class="text-sm font-medium text-foreground">Action</span>
 				<select
 					bind:value={actionFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -173,7 +173,7 @@
 			</div>
 
 			<div class="space-y-2 sm:col-span-2 lg:col-span-1">
-				<span class="text-sm font-medium text-slate-700">Plan</span>
+				<span class="text-sm font-medium text-foreground">Plan</span>
 				<select
 					bind:value={planFilter}
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -197,7 +197,7 @@
 	</div>
 
 	<!-- Activity List -->
-	<div class="rounded-lg border border-slate-200 bg-white">
+	<div class="rounded-lg border border-border bg-card">
 		{#if loading}
 			<TableSkeleton count={5} />
 		{:else if !activities || activities.data.length === 0}
@@ -216,9 +216,9 @@
 			<!-- Desktop Table View (hidden on mobile) -->
 			<div class="hidden md:block">
 				<!-- Table Header -->
-				<div class="border-b border-slate-200 bg-slate-50 px-6 py-3">
+				<div class="border-b border-border bg-muted px-6 py-3">
 					<div
-						class="grid grid-cols-12 gap-4 text-xs font-medium tracking-wider text-slate-500 uppercase"
+						class="grid grid-cols-12 gap-4 text-xs font-medium tracking-wider text-muted-foreground uppercase"
 					>
 						<div class="col-span-3">User</div>
 						<div class="col-span-3">Action</div>
@@ -230,17 +230,17 @@
 				<!-- Activity Items -->
 				<div class="divide-y divide-slate-100">
 					{#each activities.data as activity}
-						<div class="grid grid-cols-12 items-center gap-4 px-6 py-4 hover:bg-slate-50">
+						<div class="grid grid-cols-12 items-center gap-4 px-6 py-4 hover:bg-muted">
 							<!-- User -->
 							<div class="col-span-3 flex items-center gap-3">
 								<div
-									class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
+									class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted"
 								>
-									<span class="text-sm font-medium text-slate-600">
+									<span class="text-sm font-medium text-muted-foreground">
 										{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
 									</span>
 								</div>
-								<span class="truncate font-medium text-slate-900">
+								<span class="truncate font-medium text-card-foreground">
 									{activity.user?.name ?? 'Unknown'}
 								</span>
 							</div>
@@ -255,14 +255,14 @@
 											? 'bg-red-100 text-red-800'
 											: activity.action.includes('updated')
 												? 'bg-blue-100 text-blue-800'
-												: 'bg-slate-100 text-slate-800'}"
+												: 'bg-muted text-foreground'}"
 								>
 									{formatAction(activity.action)}
 								</span>
 							</div>
 
 							<!-- Details -->
-							<div class="col-span-4 text-sm text-slate-600">
+							<div class="col-span-4 text-sm text-muted-foreground">
 								{#if activity.plan}
 									<a
 										href="/plans/{activity.plan.id}"
@@ -271,14 +271,17 @@
 										{activity.plan.name}
 									</a>
 								{:else if activity.detail}
-									<span class="text-slate-500">{JSON.stringify(activity.detail)}</span>
+									<span class="text-muted-foreground">{JSON.stringify(activity.detail)}</span>
 								{:else}
-									<span class="text-slate-400">—</span>
+									<span class="text-muted-foreground">—</span>
 								{/if}
 							</div>
 
 							<!-- Time -->
-							<div class="col-span-2 text-sm text-slate-500" title={formatDate(activity.created_at)}>
+							<div
+								class="col-span-2 text-sm text-muted-foreground"
+								title={formatDate(activity.created_at)}
+							>
 								{formatTime(activity.created_at)}
 							</div>
 						</div>
@@ -287,36 +290,36 @@
 			</div>
 
 			<!-- Mobile Card View (shown only on mobile) -->
-			<div class="md:hidden divide-y divide-slate-100">
+			<div class="divide-y divide-slate-100 md:hidden">
 				{#each activities.data as activity}
-					<div class="p-4 hover:bg-slate-50">
+					<div class="p-4 hover:bg-muted">
 						<div class="flex items-start justify-between gap-3">
-							<div class="flex items-center gap-3 min-w-0 flex-1">
+							<div class="flex min-w-0 flex-1 items-center gap-3">
 								<div
-									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100"
+									class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted"
 								>
-									<span class="text-sm font-medium text-slate-600">
+									<span class="text-sm font-medium text-muted-foreground">
 										{activity.user?.name?.charAt(0).toUpperCase() ?? '?'}
 									</span>
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="font-medium text-slate-900 truncate">
+									<p class="truncate font-medium text-card-foreground">
 										{activity.user?.name ?? 'Unknown'}
 									</p>
-									<p class="text-xs text-slate-500">
+									<p class="text-xs text-muted-foreground">
 										{formatTime(activity.created_at)}
 									</p>
 								</div>
 							</div>
 							<span
-								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium flex-shrink-0
+								class="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium
 								{activity.action.includes('created')
 									? 'bg-green-100 text-green-800'
 									: activity.action.includes('deleted')
 										? 'bg-red-100 text-red-800'
 										: activity.action.includes('updated')
 											? 'bg-blue-100 text-blue-800'
-											: 'bg-slate-100 text-slate-800'}"
+											: 'bg-muted text-foreground'}"
 							>
 								{formatAction(activity.action)}
 							</span>
@@ -330,9 +333,9 @@
 									{activity.plan.name}
 								</a>
 							{:else if activity.detail}
-								<span class="text-sm text-slate-500">{JSON.stringify(activity.detail)}</span>
+								<span class="text-sm text-muted-foreground">{JSON.stringify(activity.detail)}</span>
 							{:else}
-								<span class="text-sm text-slate-400">—</span>
+								<span class="text-sm text-muted-foreground">—</span>
 							{/if}
 						</div>
 					</div>
@@ -341,8 +344,10 @@
 
 			<!-- Pagination -->
 			{#if totalPages > 1}
-				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200 px-6 py-4">
-					<div class="text-sm text-slate-600 text-center sm:text-left">
+				<div
+					class="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+				>
+					<div class="text-center text-sm text-muted-foreground sm:text-left">
 						Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
 							currentPage * itemsPerPage,
 							activities.meta.total
@@ -358,7 +363,7 @@
 							<ChevronLeft class="mr-1 h-4 w-4" />
 							<span class="hidden sm:inline">Previous</span>
 						</Button>
-						<span class="text-sm text-slate-600 px-2">
+						<span class="px-2 text-sm text-muted-foreground">
 							Page {currentPage} of {totalPages}
 						</span>
 						<Button

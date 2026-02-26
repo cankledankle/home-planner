@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '$lib/components/ui/dialog';
+	import {
+		Dialog,
+		DialogContent,
+		DialogHeader,
+		DialogTitle,
+		DialogDescription
+	} from '$lib/components/ui/dialog';
 	import { toast } from 'svelte-sonner';
 	import {
 		FileText,
@@ -78,7 +84,7 @@
 	let bulkUploadOpen = $state(false);
 	let selectedFiles = $state<SelectedFile[]>([]);
 	let bulkUploading = $state(false);
-	
+
 	// Overwrite confirmation
 	let overwriteConfirmOpen = $state(false);
 	let slotsToOverwrite = $state<{ slot: string; label: string; existingFile: FileType }[]>([]);
@@ -98,7 +104,9 @@
 		try {
 			const data = await getPlanFiles(planId);
 			files = {
-				website: data.website ? Object.values(data.website).filter((f): f is FileType => Boolean(f)) : [],
+				website: data.website
+					? Object.values(data.website).filter((f): f is FileType => Boolean(f))
+					: [],
 				reference: data.reference || [],
 				technical: data.technical || [],
 				'3d': data['3d'] || [],
@@ -263,7 +271,7 @@
 	function handleBulkFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > 0) {
-			const newFiles: SelectedFile[] = Array.from(input.files).map(file => ({
+			const newFiles: SelectedFile[] = Array.from(input.files).map((file) => ({
 				file,
 				slot: null,
 				id: Math.random().toString(36).substring(7),
@@ -279,7 +287,7 @@
 		isDragging = false;
 
 		if (event.dataTransfer?.files) {
-			const newFiles: SelectedFile[] = Array.from(event.dataTransfer.files).map(file => ({
+			const newFiles: SelectedFile[] = Array.from(event.dataTransfer.files).map((file) => ({
 				file,
 				slot: null,
 				id: Math.random().toString(36).substring(7),
@@ -290,22 +298,20 @@
 	}
 
 	function removeSelectedFile(id: string) {
-		selectedFiles = selectedFiles.filter(f => f.id !== id);
+		selectedFiles = selectedFiles.filter((f) => f.id !== id);
 	}
 
 	function assignSlot(fileId: string, slotKey: string) {
-		selectedFiles = selectedFiles.map(f =>
-			f.id === fileId ? { ...f, slot: slotKey } : f
-		);
+		selectedFiles = selectedFiles.map((f) => (f.id === fileId ? { ...f, slot: slotKey } : f));
 	}
 
 	function checkForExistingFiles() {
-		const filesWithSlots = selectedFiles.filter(f => f.slot);
+		const filesWithSlots = selectedFiles.filter((f) => f.slot);
 		const existing: { slot: string; label: string; existingFile: FileType }[] = [];
-		
+
 		for (const f of filesWithSlots) {
 			if (f.slot && websiteSlotFiles[f.slot]) {
-				const slotLabel = websiteSlots.find(s => s.key === f.slot)?.label || f.slot;
+				const slotLabel = websiteSlots.find((s) => s.key === f.slot)?.label || f.slot;
 				existing.push({
 					slot: f.slot,
 					label: slotLabel,
@@ -313,12 +319,12 @@
 				});
 			}
 		}
-		
+
 		return existing;
 	}
 
 	function initiateBulkUpload() {
-		const filesWithSlots = selectedFiles.filter(f => f.slot);
+		const filesWithSlots = selectedFiles.filter((f) => f.slot);
 		if (filesWithSlots.length === 0) {
 			toast.error('Please assign at least one file to a slot');
 			return;
@@ -333,7 +339,9 @@
 		}
 		const duplicates = Object.entries(slotCounts).filter(([_, count]) => count > 1);
 		if (duplicates.length > 0) {
-			const slots = duplicates.map(([slot]) => websiteSlots.find(s => s.key === slot)?.label || slot).join(', ');
+			const slots = duplicates
+				.map(([slot]) => websiteSlots.find((s) => s.key === slot)?.label || slot)
+				.join(', ');
 			toast.error(`Multiple files assigned to: ${slots}`);
 			return;
 		}
@@ -351,41 +359,41 @@
 	async function executeBulkUpload() {
 		overwriteConfirmOpen = false;
 		bulkUploading = true;
-		
-		const filesWithSlots = selectedFiles.filter(f => f.slot);
+
+		const filesWithSlots = selectedFiles.filter((f) => f.slot);
 		const total = filesWithSlots.length;
 		let completed = 0;
 		let failed = 0;
 
 		for (const selectedFile of filesWithSlots) {
 			if (!selectedFile.slot) continue;
-			
+
 			// Update status to uploading
-			selectedFiles = selectedFiles.map(f =>
+			selectedFiles = selectedFiles.map((f) =>
 				f.id === selectedFile.id ? { ...f, status: 'uploading' } : f
 			);
-			
+
 			try {
 				await uploadWebsiteFile(planId, selectedFile.slot, selectedFile.file);
 				completed++;
-				
+
 				// Update status to complete
-				selectedFiles = selectedFiles.map(f =>
+				selectedFiles = selectedFiles.map((f) =>
 					f.id === selectedFile.id ? { ...f, status: 'complete' } : f
 				);
 			} catch (err) {
 				failed++;
 				const errorMsg = err instanceof Error ? err.message : 'Upload failed';
-				
+
 				// Update status to error
-				selectedFiles = selectedFiles.map(f =>
+				selectedFiles = selectedFiles.map((f) =>
 					f.id === selectedFile.id ? { ...f, status: 'error', errorMessage: errorMsg } : f
 				);
 			}
 		}
 
 		bulkUploading = false;
-		
+
 		if (failed === 0) {
 			toast.success(`${completed} file(s) uploaded successfully`);
 			// Call parent callback to refresh plan data
@@ -435,17 +443,17 @@
 
 	function getSlotLabel(slotKey: string | null): string {
 		if (!slotKey) return 'Select slot...';
-		const slot = websiteSlots.find(s => s.key === slotKey);
+		const slot = websiteSlots.find((s) => s.key === slotKey);
 		return slot?.label || slotKey;
 	}
 
-	function getAvailableSlots(currentFileId: string): { key: string; label: string; occupied: boolean }[] {
+	function getAvailableSlots(
+		currentFileId: string
+	): { key: string; label: string; occupied: boolean }[] {
 		const occupiedSlots = new Set(
-			selectedFiles
-				.filter(f => f.id !== currentFileId && f.slot)
-				.map(f => f.slot)
+			selectedFiles.filter((f) => f.id !== currentFileId && f.slot).map((f) => f.slot)
 		);
-		return websiteSlots.map(slot => ({
+		return websiteSlots.map((slot) => ({
 			...slot,
 			occupied: occupiedSlots.has(slot.key)
 		}));
@@ -490,10 +498,14 @@
 				{#each websiteSlots as slot}
 					{@const file = websiteSlotFiles[slot.key]}
 					{@const imageUrl = slotImageUrls[slot.key]}
-					<div class="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+					<div
+						class="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+					>
 						{#if file && imageUrl}
 							<img src={imageUrl} alt={slot.label} class="h-full w-full object-cover" />
-							<div class="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 to-transparent p-2">
+							<div
+								class="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/60 to-transparent p-2"
+							>
 								<span class="text-xs font-medium text-white">{slot.label}</span>
 							</div>
 						{:else}
@@ -530,8 +542,11 @@
 						<Upload class="h-6 w-6 text-blue-600" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-slate-700">Drop files here or click to upload to Reference</p>
-						<p class="mt-1 text-xs text-slate-500">Use "Bulk Upload to Slots" above for website images</p>
+						<p class="text-sm font-medium text-slate-700">Drop files here or click to upload</p>
+						<div class="mt-1 space-y-0.5 text-xs text-slate-500">
+							<p>Max size: 50MB • Images will be optimized (max 4000px, JPEG 90%)</p>
+							<p class="text-amber-600">PNG files with transparency will be stored as "Other"</p>
+						</div>
 					</div>
 					<Button variant="outline" onclick={() => document.getElementById('file-upload')?.click()}>
 						Select Files
@@ -564,7 +579,7 @@
 					</div>
 					<div>
 						<p class="text-sm font-medium text-slate-700">Drop files here or click to upload</p>
-						<p class="mt-1 text-xs text-slate-500">Maximum file size: 500MB</p>
+						<p class="mt-1 text-xs text-slate-500">Maximum file size: 50MB</p>
 					</div>
 					<Button variant="outline" onclick={() => document.getElementById('file-upload')?.click()}>
 						Select Files
@@ -637,7 +652,7 @@
 
 <!-- Bulk Upload Dialog for Website Slots -->
 <Dialog bind:open={bulkUploadOpen}>
-	<DialogContent class="sm:max-w-4xl max-h-[90vh] overflow-hidden">
+	<DialogContent class="max-h-[90vh] overflow-hidden sm:max-w-4xl">
 		<DialogHeader>
 			<DialogTitle>Bulk Upload to Website Slots</DialogTitle>
 			<DialogDescription>
@@ -662,7 +677,10 @@
 					<Upload class="h-5 w-5 text-blue-600" />
 				</div>
 				<p class="text-sm font-medium text-slate-700">Drop files here or click to select</p>
-				<p class="text-xs text-slate-500">Select images to upload to website slots</p>
+				<div class="space-y-0.5 text-center text-xs text-slate-500">
+					<p>Max 5MB per image • Will be resized to max 4000px • JPEG output</p>
+					<p class="text-amber-600">PNG with transparency → stored as "Other"</p>
+				</div>
 				<Button
 					size="sm"
 					variant="outline"
@@ -674,7 +692,7 @@
 					id="bulk-file-upload"
 					type="file"
 					multiple
-					accept="image/*"
+					accept="image/jpeg,image/png,.jpg,.jpeg,.png"
 					class="hidden"
 					onchange={handleBulkFileSelect}
 				/>
@@ -690,8 +708,15 @@
 				<div class="max-h-[50vh] space-y-2 overflow-y-auto pr-2">
 					{#each selectedFiles as selectedFile (selectedFile.id)}
 						{@const StatusIcon = getStatusIcon(selectedFile.status)}
-						<div class="flex items-center gap-3 rounded-lg border border-slate-200 p-3 overflow-hidden {selectedFile.status === 'error' ? 'bg-red-50 border-red-200' : ''} {selectedFile.status === 'complete' ? 'bg-green-50 border-green-200' : ''}">
-							<div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100">
+						<div
+							class="flex items-center gap-3 overflow-hidden rounded-lg border border-slate-200 p-3 {selectedFile.status ===
+							'error'
+								? 'border-red-200 bg-red-50'
+								: ''} {selectedFile.status === 'complete' ? 'border-green-200 bg-green-50' : ''}"
+						>
+							<div
+								class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100"
+							>
 								{#if selectedFile.status === 'uploading'}
 									<Loader2 class="h-6 w-6 animate-spin text-blue-500" />
 								{:else}
@@ -702,15 +727,17 @@
 								<p class="truncate text-sm font-medium text-slate-900">{selectedFile.file.name}</p>
 								<p class="text-xs text-slate-500">{formatFileSize(selectedFile.file.size)}</p>
 								{#if selectedFile.status === 'error' && selectedFile.errorMessage}
-									<p class="text-xs text-red-600 mt-1">{selectedFile.errorMessage}</p>
+									<p class="mt-1 text-xs text-red-600">{selectedFile.errorMessage}</p>
 								{/if}
 							</div>
 							<div class="flex flex-shrink-0 items-center gap-2">
 								<select
 									value={selectedFile.slot || ''}
-									onchange={(e) => assignSlot(selectedFile.id, (e.target as HTMLSelectElement).value)}
-									disabled={selectedFile.status === 'uploading' || selectedFile.status === 'complete'}
-									class="w-[140px] rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-500"
+									onchange={(e) =>
+										assignSlot(selectedFile.id, (e.target as HTMLSelectElement).value)}
+									disabled={selectedFile.status === 'uploading' ||
+										selectedFile.status === 'complete'}
+									class="w-[140px] rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
 								>
 									<option value="">Select slot...</option>
 									{#each getAvailableSlots(selectedFile.id) as slotOption}
@@ -720,7 +747,11 @@
 									{/each}
 								</select>
 								{#if StatusIcon}
-									<StatusIcon class="h-4 w-4 flex-shrink-0 {getStatusColor(selectedFile.status)} {selectedFile.status === 'uploading' ? 'animate-spin' : ''}" />
+									<StatusIcon
+										class="h-4 w-4 flex-shrink-0 {getStatusColor(
+											selectedFile.status
+										)} {selectedFile.status === 'uploading' ? 'animate-spin' : ''}"
+									/>
 								{/if}
 								<Button
 									size="sm"
@@ -762,12 +793,16 @@
 			</Button>
 			<Button
 				onclick={handleBulkUpload}
-				disabled={selectedFiles.length === 0 || bulkUploading || selectedFiles.every(f => f.status === 'complete')}
+				disabled={selectedFiles.length === 0 ||
+					bulkUploading ||
+					selectedFiles.every((f) => f.status === 'complete')}
 			>
 				{#if bulkUploading}
 					Uploading...
 				{:else}
-					Upload {selectedFiles.filter(f => f.slot && f.status !== 'complete').length > 0 ? `${selectedFiles.filter(f => f.slot && f.status !== 'complete').length} Files` : 'Files'}
+					Upload {selectedFiles.filter((f) => f.slot && f.status !== 'complete').length > 0
+						? `${selectedFiles.filter((f) => f.slot && f.status !== 'complete').length} Files`
+						: 'Files'}
 				{/if}
 			</Button>
 		</div>
@@ -793,27 +828,17 @@
 					<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-amber-100">
 						<Image class="h-4 w-4 text-amber-600" />
 					</div>
-					<div class="flex-1 min-w-0">
-						<p class="font-medium text-amber-900 truncate">{label}</p>
-						<p class="text-xs text-amber-700 truncate">Current: {existingFile.filename}</p>
+					<div class="min-w-0 flex-1">
+						<p class="truncate font-medium text-amber-900">{label}</p>
+						<p class="truncate text-xs text-amber-700">Current: {existingFile.filename}</p>
 					</div>
 				</div>
 			{/each}
 		</div>
 
 		<div class="mt-6 flex justify-end gap-2">
-			<Button
-				variant="outline"
-				onclick={() => overwriteConfirmOpen = false}
-			>
-				Cancel
-			</Button>
-			<Button
-				variant="destructive"
-				onclick={executeBulkUpload}
-			>
-				Overwrite Files
-			</Button>
+			<Button variant="outline" onclick={() => (overwriteConfirmOpen = false)}>Cancel</Button>
+			<Button variant="destructive" onclick={executeBulkUpload}>Overwrite Files</Button>
 		</div>
 	</DialogContent>
 </Dialog>

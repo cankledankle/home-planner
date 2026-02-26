@@ -684,3 +684,41 @@ func GetRecentPlans(ctx context.Context, limit int) ([]PlanRow, error) {
 
 	return plans, nil
 }
+
+func GetRecentlyImportedPlans(ctx context.Context) ([]PlanRow, error) {
+	rows, err := Pool.Query(ctx, `
+		SELECT id, name, slug, type, style, status, beds, baths, half_baths,
+		       main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
+		       garage_apartment_sf, unfinished_sf, heated_sf, total_sf,
+		       notes, deleted_at, created_at, updated_at, created_by, updated_by
+		FROM plans
+		WHERE deleted_at IS NULL
+		  AND created_at >= NOW() - INTERVAL '24 hours'
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var plans []PlanRow
+	for rows.Next() {
+		var p PlanRow
+		err := rows.Scan(
+			&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
+			&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
+			&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
+			&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
+		)
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return plans, nil
+}

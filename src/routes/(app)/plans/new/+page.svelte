@@ -89,8 +89,8 @@
 				<ArrowLeft class="h-4 w-4" />
 			</Button>
 			<div>
-				<h1 class="text-2xl font-bold text-slate-900">New Home Plan</h1>
-				<p class="text-sm text-slate-600">Create a new home plan</p>
+				<h1 class="text-2xl font-bold text-card-foreground">New Home Plan</h1>
+				<p class="text-sm text-muted-foreground">Create a new home plan</p>
 			</div>
 		</div>
 		<Button onclick={handleSubmit} disabled={saving}>
@@ -107,14 +107,14 @@
 	<!-- Form -->
 	<div class="space-y-6">
 		<!-- Basic Information -->
-		<div class="rounded-lg border border-slate-200 bg-white p-6">
-			<h2 class="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+		<div class="rounded-lg border border-border bg-card p-6">
+			<h2 class="mb-4 flex items-center gap-2 text-lg font-semibold text-card-foreground">
 				<Home class="h-5 w-5 text-blue-500" />
 				Basic Information
 			</h2>
 			<div class="grid gap-6 md:grid-cols-2">
 				<div class="md:col-span-2">
-					<span class="mb-2 block text-sm font-medium text-slate-700">
+					<span class="mb-2 block text-sm font-medium text-foreground">
 						Plan Name <span class="text-red-500">*</span>
 					</span>
 					<Input
@@ -129,7 +129,7 @@
 				</div>
 
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Plan Type</span>
+					<span class="mb-2 block text-sm font-medium text-foreground">Plan Type</span>
 					<div class="flex flex-wrap gap-2">
 						{#each planTypes as pt}
 							<button
@@ -137,7 +137,7 @@
 								class="rounded-full px-4 py-2 text-sm font-medium transition-colors {type ===
 								pt.value
 									? 'bg-blue-500 text-white'
-									: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}"
+									: 'border border-border bg-card text-foreground hover:bg-accent'}"
 								onclick={() => (type = pt.value)}
 							>
 								{pt.label}
@@ -147,7 +147,7 @@
 				</div>
 
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Style</span>
+					<span class="mb-2 block text-sm font-medium text-foreground">Style</span>
 					<div class="flex flex-wrap gap-2">
 						{#each planStyles as ps}
 							<button
@@ -155,7 +155,7 @@
 								class="rounded-full px-4 py-2 text-sm font-medium transition-colors {style ===
 								ps.value
 									? 'bg-emerald-500 text-white'
-									: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}"
+									: 'border border-border bg-card text-foreground hover:bg-accent'}"
 								onclick={() => (style = ps.value)}
 							>
 								{ps.label}
@@ -167,85 +167,50 @@
 		</div>
 
 		<!-- Room Counts -->
-		<div class="rounded-lg border border-slate-200 bg-white p-6">
-			<h2 class="mb-4 text-lg font-semibold text-slate-900">Room Counts</h2>
+		<div class="rounded-lg border border-border bg-card p-6">
+			<h2 class="mb-4 text-lg font-semibold text-card-foreground">Room Counts</h2>
 			<div class="grid gap-6 sm:grid-cols-3">
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Bedrooms</span>
-					<Input
-						type="number"
-						bind:value={beds}
-						placeholder="e.g., 3"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Bedrooms</span>
+					<Input type="number" bind:value={beds} placeholder="e.g., 3" min="0" />
 				</div>
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Full Baths</span>
-					<Input
-						type="number"
-						bind:value={baths}
-						placeholder="e.g., 2"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Full Baths</span>
+					<Input type="number" bind:value={baths} placeholder="e.g., 2" min="0" />
 				</div>
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Half Baths</span>
-					<Input
-						type="number"
-						bind:value={halfBaths}
-						placeholder="e.g., 1"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Half Baths</span>
+					<Input type="number" bind:value={halfBaths} placeholder="e.g., 1" min="0" />
 				</div>
 			</div>
 		</div>
 
 		<!-- Square Footage -->
-		<div class="rounded-lg border border-slate-200 bg-white p-6">
-			<h2 class="mb-4 text-lg font-semibold text-slate-900">Square Footage</h2>
+		<div class="rounded-lg border border-border bg-card p-6">
+			<h2 class="mb-4 text-lg font-semibold text-card-foreground">Square Footage</h2>
 			<div class="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Main Floor</span>
-					<Input
-						type="number"
-						bind:value={mainSF}
-						placeholder="e.g., 1500"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Main Floor</span>
+					<Input type="number" bind:value={mainSF} placeholder="e.g., 1500" min="0" />
 				</div>
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Upper Floor</span>
-					<Input
-						type="number"
-						bind:value={upperSF}
-						placeholder="e.g., 800"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Upper Floor</span>
+					<Input type="number" bind:value={upperSF} placeholder="e.g., 800" min="0" />
 				</div>
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Lower Floor</span>
-					<Input
-						type="number"
-						bind:value={lowerSF}
-						placeholder="e.g., 600"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Lower Floor</span>
+					<Input type="number" bind:value={lowerSF} placeholder="e.g., 600" min="0" />
 				</div>
 				<div>
-					<span class="mb-2 block text-sm font-medium text-slate-700">Total</span>
-					<Input
-						type="number"
-						bind:value={totalSF}
-						placeholder="e.g., 2900"
-						min="0"
-					/>
+					<span class="mb-2 block text-sm font-medium text-foreground">Total</span>
+					<Input type="number" bind:value={totalSF} placeholder="e.g., 2900" min="0" />
 				</div>
 			</div>
 		</div>
 
 		<!-- Notes -->
-		<div class="rounded-lg border border-slate-200 bg-white p-6">
-			<h2 class="mb-4 text-lg font-semibold text-slate-900">Notes</h2>
+		<div class="rounded-lg border border-border bg-card p-6">
+			<h2 class="mb-4 text-lg font-semibold text-card-foreground">Notes</h2>
 			<textarea
 				bind:value={notes}
 				placeholder="Add any notes about this plan..."

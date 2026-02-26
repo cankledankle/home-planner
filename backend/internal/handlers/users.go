@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/cankledankle/home-planner/internal/db"
 	"github.com/cankledankle/home-planner/internal/models"
+	"github.com/cankledankle/home-planner/internal/sftpgo"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -24,10 +25,17 @@ type UpdatePasswordRequest struct {
 	Password string `json:"password"`
 }
 
-type UserHandler struct{}
+type UserHandler struct {
+	sftpService *sftpgo.Service
+}
 
 func NewUserHandler() *UserHandler {
-	return &UserHandler{}
+	sftpService, err := sftpgo.NewService()
+	if err != nil {
+		// SFTPGo is optional, log but don't fail
+		return &UserHandler{sftpService: nil}
+	}
+	return &UserHandler{sftpService: sftpService}
 }
 
 func (h *UserHandler) List(c *fiber.Ctx) error {
@@ -117,8 +125,25 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
+	// Create SFTPGo user if service is configured
+	var sftpCredentials *sftpgo.UserCredentials
+	if h.sftpService != nil && h.sftpService.IsConfigured() {
+		sftpCredentials, err = h.sftpService.CreateUser(c.Context(), sftpgo.CreateUserRequest{
+			UserID:     user.ID,
+			Email:      user.Email,
+			Name:       user.Name,
+			Permission: "readwrite", // Default to read+write for new users
+		})
+		if err != nil {
+			// Log error but don't fail user creation
+			// User was created successfully in the app
+			// SFTP credentials can be generated later
+			c.Context().Logger().Printf("Warning: Failed to create SFTPGo user: %v", err)
+		}
+	}
+
 	userUUID, _ := uuid.Parse(user.ID)
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+	response := fiber.Map{
 		"data": models.UserResponse{
 			ID:        userUUID,
 			Name:      user.Name,
@@ -127,7 +152,14 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		},
-	})
+	}
+
+	// Include SFTP credentials in response if they were created
+	if sftpCredentials != nil {
+		response["sftp_credentials"] = sftpCredentials
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(response)
 }
 
 func (h *UserHandler) Update(c *fiber.Ctx) error {
@@ -296,7 +328,18 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.DeleteUser(c.Context(), userID)
+	// Get user email before deletion for SFTP cleanup
+	user, err := db.GetUserByID(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "INTERNAL_ERROR",
+				"message": "Failed to fetch user",
+			},
+		})
+	}
+
+	err = db.DeleteUser(c.Context(), userID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -312,6 +355,14 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 				"message": "Failed to delete user",
 			},
 		})
+	}
+
+	// Delete SFTPGo user if service is configured
+	if h.sftpService != nil && h.sftpService.IsConfigured() && user != nil {
+		if err := h.sftpService.DeleteUser(c.Context(), user.Email); err != nil {
+			// Log error but don't fail the deletion
+			c.Context().Logger().Printf("Warning: Failed to delete SFTPGo user: %v", err)
+		}
 	}
 
 	return c.JSON(fiber.Map{

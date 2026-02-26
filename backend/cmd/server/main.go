@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/cankledankle/home-planner/internal/db"
 	"github.com/cankledankle/home-planner/internal/handlers"
@@ -10,13 +12,24 @@ import (
 	"github.com/cankledankle/home-planner/internal/storage"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	fiberlogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+	// Try to load .env from multiple locations
+	// 1. Current directory
+	// 2. Parent directory (for running from backend/ subdir)
+	loaded := false
+	if err := godotenv.Load(); err == nil {
+		loaded = true
+	} else if err := godotenv.Load("../.env"); err == nil {
+		loaded = true
+	}
+
+	if !loaded {
+		log.Println("No .env file found in current or parent directory")
 	}
 
 	// Connect to database
@@ -71,10 +84,29 @@ func main() {
 	exportHandler := handlers.NewExportHandler(r2Client)
 	importHandler := handlers.NewImportHandler()
 	fileHandler := handlers.NewFileHandler(r2Client)
+	sftpHandler := handlers.NewSFTPHandler()
 
-	// Routes
+	// Log SFTPGo configuration status
+	if sftpHandler != nil {
+		log.Println("SFTPGo handler initialized")
+	}
+
+	// Health check endpoint - checks database connectivity
 	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok"})
+		// Check database connection
+		dbErr := db.Ping()
+		if dbErr != nil {
+			return c.Status(503).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Database connection failed",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"status":    "ok",
+			"timestamp": time.Now().UTC(),
+			"version":   "1.0.0",
+		})
 	})
 
 	// Auth routes (public)
@@ -133,6 +165,32 @@ func main() {
 	// Import routes (admin-only)
 	admin.Post("/import/csv/preview", importHandler.PreviewCSV)
 	admin.Post("/import/csv", importHandler.ImportCSV)
+
+	// SFTP routes (admin-only)
+	admin.Get("/sftp/status", sftpHandler.GetStatus)
+	admin.Get("/sftp/credentials", sftpHandler.ListAllCredentials)
+	admin.Get("/users/:id/sftp", sftpHandler.GetUserCredentials)
+	admin.Post("/users/:id/sftp", sftpHandler.GenerateCredentials)
+	admin.Put("/users/:id/sftp/rotate", sftpHandler.RotateCredentials)
+	admin.Put("/users/:id/sftp/revoke", sftpHandler.RevokeCredentials)
+	admin.Put("/users/:id/sftp/permission", sftpHandler.UpdatePermission)
+	admin.Delete("/users/:id/sftp", sftpHandler.DeleteCredentials)
+
+	// Serve static files from the frontend build
+	// The static files are expected to be at /app/static (in production container)
+	staticPath := os.Getenv("STATIC_PATH")
+	if staticPath == "" {
+		staticPath = "./static" // Development fallback
+	}
+
+	// Serve static files
+	app.Use("/", filesystem.New(filesystem.Config{
+		Root:         http.Dir(staticPath),
+		Index:        "index.html",
+		Browse:       false,
+		MaxAge:       3600,
+		NotFoundFile: "index.html", // For SPA routing
+	}))
 
 	port := os.Getenv("PORT")
 	if port == "" {

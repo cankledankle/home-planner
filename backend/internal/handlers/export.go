@@ -22,11 +22,29 @@ func NewExportHandler(r2Client *storage.R2Client) *ExportHandler {
 	return &ExportHandler{r2Client: r2Client}
 }
 
+// Export preset constants - must match frontend contracts.ts
+const (
+	ExportPresetWPAllImport = "wp_all_import"
+	ExportPresetGeneral     = "general"
+	ExportPresetMinimal     = "minimal"
+	ExportPresetCustom      = "custom"
+)
+
+// Valid export presets
+var validExportPresets = map[string]bool{
+	ExportPresetWPAllImport: true,
+	ExportPresetGeneral:     true,
+	ExportPresetMinimal:     true,
+	ExportPresetCustom:      true,
+}
+
 var wpAllImportFields = []string{
 	"name", "slug", "type", "style", "beds", "baths", "half_baths",
 	"main_sf", "upper_sf", "lower_sf", "porch_deck_sf", "garage_sf",
 	"garage_apartment_sf", "unfinished_sf", "heated_sf", "total_sf",
 	"notes", "status",
+	"render_front", "elevation_front", "elevation_left", "elevation_rear", "elevation_right",
+	"floor_plan_main", "floor_plan_upper", "floor_plan_lower", "poster",
 }
 
 var generalFields = []string{
@@ -43,18 +61,36 @@ var allFields = []string{
 	"notes", "created_at", "updated_at", "created_by", "updated_by",
 }
 
+// validateExportPreset checks if the preset is valid
+func validateExportPreset(preset string) error {
+	if !validExportPresets[preset] {
+		return fmt.Errorf("invalid preset: %s. Must be one of: wp_all_import, general, minimal, custom", preset)
+	}
+	return nil
+}
+
 func (h *ExportHandler) ExportCSV(c *fiber.Ctx) error {
 	preset := c.Query("preset", "general")
 	fieldsParam := c.Query("fields")
 	idsParam := c.Query("ids")
 
+	// Validate preset parameter
+	if err := validateExportPreset(preset); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": err.Error(),
+			},
+		})
+	}
+
 	var fields []string
 	switch preset {
-	case "wp_all_import":
+	case ExportPresetWPAllImport:
 		fields = wpAllImportFields
-	case "general":
+	case ExportPresetGeneral:
 		fields = generalFields
-	case "custom":
+	case ExportPresetCustom:
 		if fieldsParam == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": fiber.Map{
@@ -65,10 +101,11 @@ func (h *ExportHandler) ExportCSV(c *fiber.Ctx) error {
 		}
 		fields = strings.Split(fieldsParam, ",")
 	default:
+		// This should never happen due to validateExportPreset, but just in case
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fiber.Map{
 				"code":    "VALIDATION_ERROR",
-				"message": "Invalid preset. Use: wp_all_import, general, or custom",
+				"message": "Invalid preset. Use: wp_all_import, general, minimal, or custom",
 			},
 		})
 	}
@@ -79,6 +116,52 @@ func (h *ExportHandler) ExportCSV(c *fiber.Ctx) error {
 	}
 
 	ctx := c.Context()
+
+	// WP All Import preset includes image slots, so we need files
+	if preset == ExportPresetWPAllImport {
+		plans, err := db.GetPlansWithFilesForExport(ctx, planIDs)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fiber.Map{
+					"code":    "INTERNAL_ERROR",
+					"message": "Failed to fetch plans for export",
+				},
+			})
+		}
+
+		c.Set("Content-Type", "text/csv")
+		c.Set("Content-Disposition", "attachment; filename=\"home-plans.csv\"")
+
+		writer := csv.NewWriter(c.Response().BodyWriter())
+		defer writer.Flush()
+
+		if err := writer.Write(fields); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fiber.Map{
+					"code":    "INTERNAL_ERROR",
+					"message": "Failed to write CSV header",
+				},
+			})
+		}
+
+		for _, plan := range plans {
+			row := make([]string, len(fields))
+			for i, field := range fields {
+				row[i] = getFieldValueWithFiles(plan, field)
+			}
+			if err := writer.Write(row); err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": fiber.Map{
+						"code":    "INTERNAL_ERROR",
+						"message": "Failed to write CSV row",
+					},
+				})
+			}
+		}
+		return nil
+	}
+
+	// General and custom presets - no files needed
 	plans, err := db.GetPlansForExport(ctx, planIDs)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -173,6 +256,32 @@ func getFieldValue(plan *db.PlanRow, field string) string {
 	default:
 		return ""
 	}
+}
+
+func getFieldValueWithFiles(plan *db.PlanWithFilesRow, field string) string {
+	// Map field names to slot keys
+	slotMapping := map[string]string{
+		"render_front":     "render-front",
+		"elevation_front":  "elevation-front",
+		"elevation_left":   "elevation-left",
+		"elevation_rear":   "elevation-rear",
+		"elevation_right":  "elevation-right",
+		"floor_plan_main":  "floor-plan-main",
+		"floor_plan_upper": "floor-plan-upper",
+		"floor_plan_lower": "floor-plan-lower",
+		"poster":           "poster",
+	}
+
+	// Check if this is an image slot field
+	if slot, ok := slotMapping[field]; ok {
+		if filename, exists := plan.Files[slot]; exists && filename != "" {
+			return filename
+		}
+		return ""
+	}
+
+	// Otherwise use standard field mapping
+	return getFieldValue(plan.PlanRow, field)
 }
 
 func stringPtrToString(s *string) string {

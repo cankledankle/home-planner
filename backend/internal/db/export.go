@@ -70,6 +70,93 @@ func GetPlansForExport(ctx context.Context, planIDs []string) ([]*PlanRow, error
 	return plans, nil
 }
 
+type PlanWithFilesRow struct {
+	*PlanRow
+	Files map[string]string // slot -> filename
+}
+
+func GetPlansWithFilesForExport(ctx context.Context, planIDs []string) ([]*PlanWithFilesRow, error) {
+	var query string
+	var args []interface{}
+
+	if len(planIDs) > 0 {
+		placeholders := make([]string, len(planIDs))
+		for i, id := range planIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args = append(args, id)
+		}
+		query = fmt.Sprintf(`
+			SELECT p.id, p.name, p.slug, p.type, p.style, p.status, p.beds, p.baths, p.half_baths,
+			       p.main_sf, p.upper_sf, p.lower_sf, p.porch_deck_sf, p.garage_sf,
+			       p.garage_apartment_sf, p.unfinished_sf, p.heated_sf, p.total_sf,
+			       p.notes, p.deleted_at, p.created_at, p.updated_at, p.created_by, p.updated_by,
+			       f.slot, f.filename
+			FROM plans p
+			LEFT JOIN files f ON p.id = f.plan_id AND f.category = 'website'
+			WHERE p.deleted_at IS NULL AND p.id IN (%s)
+			ORDER BY p.name
+		`, strings.Join(placeholders, ", "))
+	} else {
+		query = `
+			SELECT p.id, p.name, p.slug, p.type, p.style, p.status, p.beds, p.baths, p.half_baths,
+			       p.main_sf, p.upper_sf, p.lower_sf, p.porch_deck_sf, p.garage_sf,
+			       p.garage_apartment_sf, p.unfinished_sf, p.heated_sf, p.total_sf,
+			       p.notes, p.deleted_at, p.created_at, p.updated_at, p.created_by, p.updated_by,
+			       f.slot, f.filename
+			FROM plans p
+			LEFT JOIN files f ON p.id = f.plan_id AND f.category = 'website'
+			WHERE p.deleted_at IS NULL
+			ORDER BY p.name
+		`
+	}
+
+	rows, err := Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	planMap := make(map[string]*PlanWithFilesRow)
+
+	for rows.Next() {
+		var p PlanRow
+		var slot, filename *string
+		err := rows.Scan(
+			&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
+			&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
+			&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
+			&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
+			&slot, &filename,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exists := planMap[p.ID]; !exists {
+			planMap[p.ID] = &PlanWithFilesRow{
+				PlanRow: &p,
+				Files:   make(map[string]string),
+			}
+		}
+
+		if slot != nil && filename != nil {
+			planMap[p.ID].Files[*slot] = *filename
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert map to slice maintaining order
+	plans := make([]*PlanWithFilesRow, 0, len(planMap))
+	for _, p := range planMap {
+		plans = append(plans, p)
+	}
+
+	return plans, nil
+}
+
 func GetFilesForExport(ctx context.Context, planIDs []string, categories []string) ([]*FileExportRow, error) {
 	var conditions []string
 	var args []interface{}

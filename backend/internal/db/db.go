@@ -38,6 +38,13 @@ func Close() {
 	}
 }
 
+func Ping() error {
+	if Pool == nil {
+		return fmt.Errorf("database pool is not initialized")
+	}
+	return Pool.Ping(context.Background())
+}
+
 func RunMigrations() error {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {

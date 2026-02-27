@@ -13,16 +13,17 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     # Expose postgres to the app service only
     expose:
       - '5432'
 
   app:
     # Use the GitHub Container Registry image
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-cankledankle}/home-planner:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-cankledankle}/home-planner:staging
     restart: unless-stopped
     environment:
       # Database - connects to postgres service within compose network
@@ -50,13 +51,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      sftpgo:
-        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/health']
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     # Dokploy will handle the port exposure
     expose:
       - '8080'
@@ -77,10 +77,11 @@ services:
     volumes:
       - sftpgo_data:/var/lib/sftpgo
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/healthz']
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/api/v2/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     expose:
       - '8080'
 

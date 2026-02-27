@@ -1,0 +1,89 @@
+# Dokploy Docker Compose - Self-contained stack
+# Use this entire file in Dokploy's docker-compose configuration
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-homeplanner}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Expose postgres to the app service only
+    expose:
+      - '5432'
+
+  app:
+    # Use the GitHub Container Registry image
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-cankledankle}/home-planner:latest
+    restart: unless-stopped
+    environment:
+      # Database - connects to postgres service within compose network
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME:-homeplanner}?sslmode=disable
+      MIGRATIONS_PATH: file:///app/migrations
+      PORT: 8080
+      # CORS - set to your Dokploy domain
+      FRONTEND_URL: ${FRONTEND_URL}
+      STATIC_PATH: /app/static
+      # JWT Secret (required)
+      JWT_SECRET: ${JWT_SECRET}
+      # Admin user seeding
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME}
+      # R2 Configuration (optional - for file storage)
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+      # SFTPGo (optional - for file storage)
+      SFTPGO_API_URL: ${SFTPGO_API_URL:-http://sftpgo:8080}
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sftpgo:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    # Dokploy will handle the port exposure
+    expose:
+      - '8080'
+
+  sftpgo:
+    image: drakkan/sftpgo:v2.6
+    restart: unless-stopped
+    environment:
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
+      SFTPGO_DATA_PROVIDER__DRIVER: memory
+      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
+      SFTPGO_HTTPD__BINDINGS__0__ENABLE_WEB_ADMIN: 'true'
+      SFTPGO_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      SFTPGO_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      SFTPGO_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      SFTPGO_R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+    volumes:
+      - sftpgo_data:/var/lib/sftpgo
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    expose:
+      - '8080'
+
+volumes:
+  postgres_data:
+  sftpgo_data:

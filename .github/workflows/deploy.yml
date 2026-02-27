@@ -53,8 +53,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
 
   # Staging: Dokploy auto-deploys when it sees new :staging image
   # No SSH needed - Dokploy handles deployment

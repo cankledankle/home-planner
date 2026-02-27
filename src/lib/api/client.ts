@@ -1,7 +1,7 @@
 import { goto } from '$app/navigation';
 import type { ApiError, LoginCredentials, User } from '$lib/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export class ApiClient {
 	private baseUrl: string;
@@ -10,7 +10,11 @@ export class ApiClient {
 		this.baseUrl = baseUrl;
 	}
 
-	private async fetch(endpoint: string, options: RequestInit = {}, skipAuthRetry: boolean = false): Promise<Response> {
+	private async fetch(
+		endpoint: string,
+		options: RequestInit = {},
+		skipAuthRetry: boolean = false
+	): Promise<Response> {
 		const url = `${this.baseUrl}${endpoint}`;
 
 		const defaultOptions: RequestInit = {
@@ -51,10 +55,14 @@ export class ApiClient {
 	}
 
 	async login(credentials: LoginCredentials): Promise<User> {
-		const response = await this.fetch('/auth/login', {
-			method: 'POST',
-			body: JSON.stringify(credentials)
-		}, true); // Skip auth retry for login
+		const response = await this.fetch(
+			'/auth/login',
+			{
+				method: 'POST',
+				body: JSON.stringify(credentials)
+			},
+			true
+		); // Skip auth retry for login
 
 		if (!response.ok) {
 			const error: ApiError = await response.json();

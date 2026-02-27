@@ -24,13 +24,10 @@
 
 	onMount(async () => {
 		try {
-			console.log('Checking auth...');
 			const user = await api.me();
-			console.log('Auth check result:', user);
 			if (user) {
 				auth.set(user);
 			} else {
-				console.log('No user, redirecting to login');
 				goto('/login');
 			}
 		} catch (err) {

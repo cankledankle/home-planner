@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -34,10 +35,10 @@ func init() {
 	jwtRefreshSecret = []byte(os.Getenv("JWT_REFRESH_SECRET"))
 
 	if len(jwtSecret) == 0 {
-		jwtSecret = []byte("default-secret-change-in-production")
+		log.Fatal("JWT_SECRET environment variable is required")
 	}
 	if len(jwtRefreshSecret) == 0 {
-		jwtRefreshSecret = []byte("default-refresh-secret-change-in-production")
+		log.Fatal("JWT_REFRESH_SECRET environment variable is required")
 	}
 }
 

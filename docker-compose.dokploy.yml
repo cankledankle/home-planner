@@ -19,8 +19,6 @@ services:
       start_period: 10s
     expose:
       - '5432'
-    networks:
-      - home-planner
     deploy:
       resources:
         limits:
@@ -51,8 +49,6 @@ services:
       start_period: 10s
     expose:
       - '8080'
-    networks:
-      - home-planner
     deploy:
       resources:
         limits:
@@ -60,12 +56,11 @@ services:
           memory: 256M
 
   app:
-    # Use the pre-built image from GitHub Container Registry
     image: ${APP_IMAGE}
     container_name: home-planner-app
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@home-planner-postgres:5432/${POSTGRES_DB}?sslmode=disable
       MIGRATIONS_PATH: file:///app/migrations
       PORT: 8080
       FRONTEND_URL: ${FRONTEND_URL}
@@ -79,7 +74,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME}
-      SFTPGO_API_URL: http://sftpgo:8080
+      SFTPGO_API_URL: http://home-planner-sftpgo:8080
       SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME}
       SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD}
     healthcheck:
@@ -95,8 +90,6 @@ services:
         condition: service_healthy
     expose:
       - '8080'
-    networks:
-      - home-planner
     deploy:
       resources:
         limits:
@@ -106,7 +99,3 @@ services:
 volumes:
   postgres_data:
   sftpgo_data:
-
-networks:
-  home-planner:
-    driver: bridge

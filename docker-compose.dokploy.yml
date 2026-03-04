@@ -19,6 +19,8 @@ services:
       start_period: 10s
     expose:
       - '5432'
+    networks:
+      - dokploy-network
     deploy:
       resources:
         limits:
@@ -55,6 +57,8 @@ services:
         condition: service_healthy
     expose:
       - '8080'
+    networks:
+      - dokploy-network
     deploy:
       resources:
         limits:
@@ -63,3 +67,7 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  dokploy-network:
+    external: true

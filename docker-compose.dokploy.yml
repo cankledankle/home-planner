@@ -25,36 +25,6 @@ services:
           cpus: '1.0'
           memory: 512M
 
-  sftpgo:
-    image: drakkan/sftpgo:v2.6-alpine
-    container_name: home-planner-sftpgo
-    restart: unless-stopped
-    environment:
-      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME}
-      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD}
-      SFTPGO_DATA_PROVIDER__DRIVER: memory
-      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
-      SFTPGO_HTTPD__BINDINGS__0__ENABLE_WEB_ADMIN: 'true'
-      SFTPGO_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
-      SFTPGO_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
-      SFTPGO_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
-      SFTPGO_R2_BUCKET_NAME: ${R2_BUCKET_NAME}
-    volumes:
-      - sftpgo_data:/var/lib/sftpgo
-    healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/healthz']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    expose:
-      - '8080'
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-
   app:
     image: ghcr.io/cankledankle/home-planner:dev
     container_name: home-planner-app
@@ -74,9 +44,6 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME}
-      SFTPGO_API_URL: http://home-planner-sftpgo:8080
-      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME}
-      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD}
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/health']
       interval: 30s
@@ -85,8 +52,6 @@ services:
       start_period: 30s
     depends_on:
       postgres:
-        condition: service_healthy
-      sftpgo:
         condition: service_healthy
     expose:
       - '8080'
@@ -98,4 +63,3 @@ services:
 
 volumes:
   postgres_data:
-  sftpgo_data:

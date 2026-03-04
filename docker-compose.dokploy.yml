@@ -56,7 +56,7 @@ services:
           memory: 256M
 
   app:
-    image: ${APP_IMAGE}
+    image: ghcr.io/cankledankle/home-planner:dev
     container_name: home-planner-app
     restart: unless-stopped
     environment:

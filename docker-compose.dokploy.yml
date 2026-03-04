@@ -1,62 +1,101 @@
-# Dokploy Docker Compose - Staging Environment
-# Used by Dokploy to auto-deploy the dev branch
+# Dokploy Docker Compose - For Dokploy deployment (Development)
 
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: home-planner-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-homeplanner}
-      POSTGRES_USER: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - internal
-      - dokploy-network
+    expose:
+      - '5432'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
-  app:
-    image: ghcr.io/cankledankle/home-planner:dev
+  sftpgo:
+    image: drakkan/sftpgo:v2.6-alpine
+    container_name: home-planner-sftpgo
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME:-homeplanner}?sslmode=disable
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD}
+      SFTPGO_DATA_PROVIDER__DRIVER: memory
+      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
+      SFTPGO_HTTPD__BINDINGS__0__ENABLE_WEB_ADMIN: 'true'
+      SFTPGO_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      SFTPGO_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      SFTPGO_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      SFTPGO_R2_BUCKET_NAME: ${R2_BUCKET_NAME}
+    volumes:
+      - sftpgo_data:/var/lib/sftpgo
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    expose:
+      - '8080'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  app:
+    image: ${APP_IMAGE}
+    container_name: home-planner-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@home-planner-postgres:5432/${POSTGRES_DB}?sslmode=disable
       MIGRATIONS_PATH: file:///app/migrations
       PORT: 8080
       FRONTEND_URL: ${FRONTEND_URL}
       STATIC_PATH: /app/static
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME}
-      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
-      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
+      SFTPGO_API_URL: http://home-planner-sftpgo:8080
+      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME}
+      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD}
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8080/health']
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
-    networks:
-      - internal
-      - dokploy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sftpgo:
+        condition: service_healthy
+    expose:
+      - '8080'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
 
 volumes:
   postgres_data:
-
-networks:
-  internal:
-    driver: bridge
-  dokploy-network:
-    external: true
+  sftpgo_data:

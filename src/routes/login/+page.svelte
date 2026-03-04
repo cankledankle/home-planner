@@ -35,16 +35,16 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-slate-50">
-	<div class="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
+<div class="flex min-h-screen items-center justify-center bg-background">
+	<div class="w-full max-w-md rounded-lg bg-card p-8 shadow-lg">
 		<div class="mb-8 text-center">
-			<h1 class="text-2xl font-bold text-slate-900">Home Planner</h1>
-			<p class="mt-2 text-slate-600">Sign in to manage home plans</p>
+			<h1 class="text-2xl font-bold text-card-foreground">Home Planner</h1>
+			<p class="mt-2 text-muted-foreground">Sign in to manage home plans</p>
 		</div>
 
 		<form onsubmit={handleSubmit} class="space-y-6">
 			<div>
-				<label for="email" class="mb-2 block text-sm font-medium text-slate-700"> Email </label>
+				<label for="email" class="mb-2 block text-sm font-medium text-foreground"> Email </label>
 				<Input
 					id="email"
 					type="email"
@@ -56,7 +56,7 @@
 			</div>
 
 			<div>
-				<label for="password" class="mb-2 block text-sm font-medium text-slate-700">
+				<label for="password" class="mb-2 block text-sm font-medium text-foreground">
 					Password
 				</label>
 				<Input

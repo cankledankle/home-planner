@@ -17,6 +17,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - internal
 
   app:
     image: ghcr.io/cankledankle/home-planner:dev
@@ -45,6 +47,15 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    networks:
+      - internal
+      - dokploy-network
 
 volumes:
   postgres_data:
+
+networks:
+  internal:
+    driver: bridge
+  dokploy-network:
+    external: true

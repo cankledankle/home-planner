@@ -1,6 +1,6 @@
 module github.com/cankledankle/home-planner
 
-go 1.24.0
+go 1.25.6
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.2

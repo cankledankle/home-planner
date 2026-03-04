@@ -28,9 +28,14 @@ type TokenPair struct {
 var (
 	jwtSecret        []byte
 	jwtRefreshSecret []byte
+	secretsLoaded    bool
 )
 
-func init() {
+func loadSecrets() {
+	if secretsLoaded {
+		return
+	}
+
 	jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 	jwtRefreshSecret = []byte(os.Getenv("JWT_REFRESH_SECRET"))
 
@@ -40,9 +45,12 @@ func init() {
 	if len(jwtRefreshSecret) == 0 {
 		log.Fatal("JWT_REFRESH_SECRET environment variable is required")
 	}
+
+	secretsLoaded = true
 }
 
 func GenerateTokenPair(userID, email, role string) (*TokenPair, error) {
+	loadSecrets()
 	now := time.Now()
 
 	// Access token - 15 minutes
@@ -80,6 +88,7 @@ func GenerateTokenPair(userID, email, role string) (*TokenPair, error) {
 }
 
 func ValidateAccessToken(tokenString string) (*Claims, error) {
+	loadSecrets()
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -99,6 +108,7 @@ func ValidateAccessToken(tokenString string) (*Claims, error) {
 }
 
 func GetTokenID(tokenString string) (string, error) {
+	loadSecrets()
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return jwtRefreshSecret, nil
 	}, jwt.WithoutClaimsValidation())

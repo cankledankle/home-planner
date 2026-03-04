@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cankledankle/home-planner/internal/db"
@@ -13,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	fiberlogger "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 )
@@ -56,7 +60,10 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName: "Home Planner API",
+		AppName:      "Home Planner API",
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	})
 
 	// Middleware
@@ -66,6 +73,21 @@ func main() {
 		AllowHeaders:     "Origin, Content-Type, Accept",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowCredentials: true,
+	}))
+
+	// Rate limiting for API routes
+	app.Use("/api", limiter.New(limiter.Config{
+		Max:        100,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(429).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Rate limit exceeded. Please try again later.",
+			})
+		},
 	}))
 
 	// Initialize handlers
@@ -84,12 +106,6 @@ func main() {
 	exportHandler := handlers.NewExportHandler(r2Client)
 	importHandler := handlers.NewImportHandler()
 	fileHandler := handlers.NewFileHandler(r2Client)
-	sftpHandler := handlers.NewSFTPHandler()
-
-	// Log SFTPGo configuration status
-	if sftpHandler != nil {
-		log.Println("SFTPGo handler initialized")
-	}
 
 	// Health check endpoint - checks database connectivity
 	app.Get("/health", func(c *fiber.Ctx) error {
@@ -170,16 +186,6 @@ func main() {
 	// Bulk file upload (admin-only)
 	admin.Post("/plans/bulk-files", planHandler.BulkUploadFiles)
 
-	// SFTP routes (admin-only)
-	admin.Get("/sftp/status", sftpHandler.GetStatus)
-	admin.Get("/sftp/credentials", sftpHandler.ListAllCredentials)
-	admin.Get("/users/:id/sftp", sftpHandler.GetUserCredentials)
-	admin.Post("/users/:id/sftp", sftpHandler.GenerateCredentials)
-	admin.Put("/users/:id/sftp/rotate", sftpHandler.RotateCredentials)
-	admin.Put("/users/:id/sftp/revoke", sftpHandler.RevokeCredentials)
-	admin.Put("/users/:id/sftp/permission", sftpHandler.UpdatePermission)
-	admin.Delete("/users/:id/sftp", sftpHandler.DeleteCredentials)
-
 	// Serve static files from the frontend build
 	// The static files are expected to be at /app/static (in production container)
 	staticPath := os.Getenv("STATIC_PATH")
@@ -187,12 +193,19 @@ func main() {
 		staticPath = "./static" // Development fallback
 	}
 
-	// Serve static files
+	// Serve immutable assets with long cache headers (1 year)
+	app.Use("/_app/immutable", filesystem.New(filesystem.Config{
+		Root:   http.Dir(staticPath + "/_app/immutable"),
+		Browse: false,
+		MaxAge: 31536000, // 1 year in seconds
+	}))
+
+	// Serve all other static files with no-cache headers
 	app.Use("/", filesystem.New(filesystem.Config{
 		Root:         http.Dir(staticPath),
 		Index:        "index.html",
 		Browse:       false,
-		MaxAge:       3600,
+		MaxAge:       0,            // No cache for SPA routes
 		NotFoundFile: "index.html", // For SPA routing
 	}))
 
@@ -201,5 +214,29 @@ func main() {
 		port = "8080"
 	}
 
-	log.Fatal(app.Listen(":" + port))
+	// Start server in a goroutine
+	go func() {
+		if err := app.Listen(":" + port); err != nil {
+			log.Printf("Server error: %v", err)
+		}
+	}()
+
+	log.Printf("Server started on port %s", port)
+
+	// Wait for interrupt signal to gracefully shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	// Graceful shutdown with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited")
 }

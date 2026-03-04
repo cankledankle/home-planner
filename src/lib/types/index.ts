@@ -113,17 +113,3 @@ export interface ApiError {
 		message: string;
 	};
 }
-
-export interface SFTPCredentials {
-	username: string;
-	password?: string;
-	host: string;
-	port: number;
-	permission: 'read' | 'readwrite';
-}
-
-export interface SFTPStatus {
-	configured: boolean;
-	healthy?: boolean;
-	message: string;
-}

@@ -1,7 +1,5 @@
-# Base Docker Compose configuration
-# This file is used with environment-specific overrides:
-#   docker-compose.yml + docker-compose.staging.yml
-#   docker-compose.yml + docker-compose.production.yml
+# Production Docker Compose - Deploy to any VPS
+# Setup: Copy .env.example to .env, fill in values, run: docker compose up -d
 
 services:
   postgres:
@@ -10,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-homeplanner}
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,64 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
-  sftpgo:
-    image: drakkan/sftpgo:v2.6
-    restart: unless-stopped
-    environment:
-      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
-      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
-      SFTPGO_DATA_PROVIDER__DRIVER: memory
-      SFTPGO_HTTPD__BINDINGS__0__PORT: 8080
-      SFTPGO_HTTPD__BINDINGS__0__ENABLE_WEB_ADMIN: 'true'
-      SFTPGO_R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
-      SFTPGO_R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
-      SFTPGO_R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
-      SFTPGO_R2_BUCKET_NAME: ${R2_BUCKET_NAME}
-    volumes:
-      - sftpgo_data:/var/lib/sftpgo
-      - ./sftpgo/sftpgo.json:/etc/sftpgo/sftpgo.json:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/healthz']
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   app:
-    image: ${APP_IMAGE:-home-planner-app}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/cankledankle/home-planner:${IMAGE_TAG:-latest}
     restart: unless-stopped
     expose:
       - '8080'
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@postgres:5432/homeplanner?sslmode=disable}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/${DB_NAME:-homeplanner}?sslmode=disable
       MIGRATIONS_PATH: file:///app/migrations
       PORT: 8080
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      FRONTEND_URL: ${FRONTEND_URL}
       STATIC_PATH: /app/static
-      # R2 Configuration
-      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
-      R2_BUCKET_NAME: ${R2_BUCKET_NAME}
-      # JWT Configuration
       JWT_SECRET: ${JWT_SECRET}
-      # Admin seed
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME}
-      # SFTPGo Admin API
-      SFTPGO_API_URL: ${SFTPGO_API_URL:-http://sftpgo:8080}
-      SFTPGO_ADMIN_USERNAME: ${SFTPGO_ADMIN_USERNAME:-admin}
-      SFTPGO_ADMIN_PASSWORD: ${SFTPGO_ADMIN_PASSWORD:-admin}
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-}
     depends_on:
       postgres:
-        condition: service_healthy
-      sftpgo:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8080/health']
@@ -84,23 +46,18 @@ services:
       timeout: 5s
       retries: 3
 
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: ${NGINX_NAME:-home-planner-nginx}
+  caddy:
+    image: caddy:2-alpine
     restart: unless-stopped
     ports:
-      - '${NGINX_HTTP_PORT:-80}:80'
-      - '${NGINX_HTTPS_PORT:-443}:443'
+      - '80:80'
+      - '443:443'
     environment:
-      NGINX_SERVER_NAME: ${DOMAIN:-localhost}
-      NGINX_APP_HOST: app
-      NGINX_APP_PORT: 8080
-      NGINX_ENABLE_SSL: ${NGINX_ENABLE_SSL:-false}
+      DOMAIN: ${DOMAIN}
     volumes:
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx_cache:/var/cache/nginx
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       app:
         condition: service_healthy
@@ -112,5 +69,5 @@ services:
 
 volumes:
   postgres_data:
-  sftpgo_data:
-  nginx_cache:
+  caddy_data:
+  caddy_config:

@@ -8,9 +8,7 @@ import type {
 	File,
 	Activity,
 	PaginatedResponse,
-	LoginCredentials,
-	SFTPCredentials,
-	SFTPStatus
+	LoginCredentials
 } from '$lib/types';
 
 export async function login(credentials: LoginCredentials): Promise<User> {
@@ -31,8 +29,8 @@ export async function getUsers(): Promise<User[]> {
 
 export async function createUser(
 	user: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string }
-): Promise<User & { sftp_credentials?: SFTPCredentials }> {
-	return api.post<User & { sftp_credentials?: SFTPCredentials }>('/users', user);
+): Promise<User> {
+	return api.post<User>('/users', user);
 }
 
 export async function updateUser(id: string, user: Partial<User>): Promise<User> {
@@ -455,50 +453,4 @@ export async function bulkUploadFiles(
 
 	const data = await response.json();
 	return data.data;
-}
-
-// SFTP API
-export async function getSFTPStatus(): Promise<SFTPStatus> {
-	return api.get<SFTPStatus>('/sftp/status');
-}
-
-export async function getUserSFTP(userId: string): Promise<SFTPCredentials | null> {
-	try {
-		return await api.get<SFTPCredentials>(`/users/${userId}/sftp`);
-	} catch (error: any) {
-		if (error?.error?.code === 'NOT_FOUND') {
-			return null;
-		}
-		throw error;
-	}
-}
-
-export async function generateSFTP(
-	userId: string,
-	permission: 'read' | 'readwrite'
-): Promise<SFTPCredentials> {
-	return api.post<SFTPCredentials>(`/users/${userId}/sftp`, { permission });
-}
-
-export async function rotateSFTP(userId: string): Promise<SFTPCredentials> {
-	return api.put<SFTPCredentials>(`/users/${userId}/sftp/rotate`, {});
-}
-
-export async function revokeSFTP(userId: string): Promise<void> {
-	return api.put<void>(`/users/${userId}/sftp/revoke`, {});
-}
-
-export async function updateSFTPPermission(
-	userId: string,
-	permission: 'read' | 'readwrite'
-): Promise<void> {
-	return api.put<void>(`/users/${userId}/sftp/permission`, { permission });
-}
-
-export async function deleteSFTP(userId: string): Promise<void> {
-	return api.delete<void>(`/users/${userId}/sftp`);
-}
-
-export async function listAllSFTP(): Promise<SFTPCredentials[]> {
-	return api.get<SFTPCredentials[]>('/sftp/credentials');
 }

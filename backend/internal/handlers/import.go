@@ -84,9 +84,9 @@ func (h *ImportHandler) PreviewCSV(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
-			"row_count":         rowCount,
+			"total_rows":         rowCount,
 			"columns":           columns,
-			"preview_rows":      previewRows,
+			"preview":      previewRows,
 			"suggested_mapping": suggestedMapping,
 		},
 	})

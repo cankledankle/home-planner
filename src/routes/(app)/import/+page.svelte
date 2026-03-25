@@ -290,7 +290,7 @@
 
 	<!-- Step Indicator -->
 	<div class="relative">
-		<div class="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-slate-200"></div>
+		<div class="absolute top-5 left-0 h-0.5 w-full -translate-y-1/2 bg-border"></div>
 		<div class="relative flex justify-between">
 			{#each [1, 2, 3, 4, 5] as step}
 				<button
@@ -329,10 +329,10 @@
 
 				<div
 					class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragging
-						? 'border-blue-500 bg-blue-50'
+						? 'border-blue-500 bg-blue-500/10'
 						: selectedFile
-							? 'border-green-300 bg-green-50'
-							: 'border-input hover:border-slate-400'}"
+							? 'border-green-500 bg-green-500/10'
+							: 'border-input hover:border-muted-foreground'}"
 					ondrop={handleDrop}
 					ondragover={handleDragOver}
 					ondragleave={handleDragLeave}
@@ -341,7 +341,7 @@
 				>
 					{#if selectedFile}
 						<div class="flex flex-col items-center gap-3">
-							<div class="rounded-full bg-green-100 p-3">
+							<div class="rounded-full bg-green-500/20 p-3">
 								<FileSpreadsheet class="h-6 w-6 text-green-600" />
 							</div>
 							<div>
@@ -357,7 +357,7 @@
 						</div>
 					{:else}
 						<div class="flex flex-col items-center gap-3">
-							<div class="rounded-full bg-blue-100 p-3">
+							<div class="rounded-full bg-blue-500/20 p-3">
 								<Upload class="h-6 w-6 text-blue-600" />
 							</div>
 							<div>

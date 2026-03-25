@@ -18,13 +18,45 @@
 
 2. GitHub Actions builds and pushes `ghcr.io/cankledankle/home-planner:dev`
 
-3. Dokploy automatically pulls and deploys the new image
+3. GitHub Actions fires a webhook → Dokploy pulls the new image and restarts the container
 
-**Setup in Dokploy:**
+### One-Time Dokploy Setup
 
-- Create a new application
-- Use `docker-compose.dokploy.yml` as the compose file
-- Set environment variables in Dokploy dashboard
+Dokploy runs the app as a **single container** — it manages PostgreSQL separately via its database UI.
+
+1. **Create a PostgreSQL database** in Dokploy's "Databases" section. Note the connection string.
+
+2. **Create a Docker application** in Dokploy:
+   - Image: `ghcr.io/cankledankle/home-planner:dev`
+   - Set up GHCR credentials if the package is private
+
+3. **Set environment variables** in the Dokploy app settings:
+
+   | Variable               | Value                                     |
+   | ---------------------- | ----------------------------------------- |
+   | `DATABASE_URL`         | Connection string from step 1             |
+   | `MIGRATIONS_PATH`      | `file:///app/migrations`                  |
+   | `RUN_MIGRATIONS`       | `true`                                    |
+   | `PORT`                 | `8080`                                    |
+   | `STATIC_PATH`          | `/app/static`                             |
+   | `FRONTEND_URL`         | `https://your-staging-domain.com`         |
+   | `JWT_SECRET`           | strong random string                      |
+   | `JWT_REFRESH_SECRET`   | strong random string                      |
+   | `ADMIN_EMAIL`          | initial admin email                       |
+   | `ADMIN_PASSWORD`       | initial admin password                    |
+   | `ADMIN_NAME`           | initial admin name                        |
+   | `COOKIE_SECURE`        | `true`                                    |
+   | `TRUSTED_PROXIES`      | `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
+   | `R2_ACCOUNT_ID`        | _(optional)_ Cloudflare R2 account ID     |
+   | `R2_ACCESS_KEY_ID`     | _(optional)_ Cloudflare R2 access key     |
+   | `R2_SECRET_ACCESS_KEY` | _(optional)_ Cloudflare R2 secret key     |
+   | `R2_BUCKET_NAME`       | _(optional)_ Cloudflare R2 bucket name    |
+
+4. **Configure the deploy webhook**:
+   - In Dokploy, go to the app → "Deployments" → copy the webhook URL
+   - In GitHub repo settings → Secrets → add `DOKPLOY_WEBHOOK_URL` with that value
+
+5. Dokploy handles TLS automatically via its built-in reverse proxy.
 
 ## Production (VPS)
 
@@ -235,13 +267,14 @@ Create a `.env` file in the project root (see `.env.example`):
 /home-planner/
 ├── .env                    # Your environment variables (gitignored)
 ├── .env.example            # Template for environment variables
-├── docker-compose.yml      # Production configuration
-├── docker-compose.dokploy.yml  # Dokploy staging configuration
+├── docker-compose.yml      # Production VPS configuration (postgres + app + caddy)
 ├── docker-compose.dev.yml  # Local development (Postgres only)
 ├── Caddyfile               # Caddy reverse proxy config
 ├── backup.sh               # Database backup script
 └── ...
 ```
+
+> **Note:** Dokploy deployments use a single container managed via Dokploy's UI — no compose file needed.
 
 ## Architecture Improvements
 

@@ -12,10 +12,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type ImportHandler struct{}
+type ImportHandler struct {
+	store *db.Store
+}
 
-func NewImportHandler() *ImportHandler {
-	return &ImportHandler{}
+func NewImportHandler(store *db.Store) *ImportHandler {
+	return &ImportHandler{store: store}
 }
 
 func (h *ImportHandler) PreviewCSV(c *fiber.Ctx) error {
@@ -256,7 +258,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 			continue
 		}
 
-		existingPlan, err := db.GetPlanBySlug(ctx, planData.Slug)
+		existingPlan, err := h.store.GetPlanBySlug(ctx, planData.Slug)
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{
 				Row:     rowNum - 1,
@@ -291,7 +293,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 				UpdatedBy:         userID,
 			}
 
-			_, err := db.UpdatePlan(ctx, existingPlan.ID, updateInput)
+			_, err := h.store.UpdatePlan(ctx, existingPlan.ID, updateInput)
 			if err != nil {
 				result.Errors = append(result.Errors, ImportError{
 					Row:     rowNum - 1,
@@ -326,7 +328,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 				CreatedBy:         userID,
 			}
 
-			createdPlan, err := db.CreatePlan(ctx, createInput)
+			createdPlan, err := h.store.CreatePlan(ctx, createInput)
 			if err != nil {
 				result.Errors = append(result.Errors, ImportError{
 					Row:     rowNum - 1,
@@ -457,7 +459,7 @@ func generateSlug(name string) string {
 func (h *ImportHandler) GetRecentImports(c *fiber.Ctx) error {
 	ctx := c.Context()
 
-	plans, err := db.GetRecentlyImportedPlans(ctx)
+	plans, err := h.store.GetRecentlyImportedPlans(ctx)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{

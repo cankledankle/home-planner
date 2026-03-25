@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"os"
+	"strings"
 	"time"
 
 	"github.com/cankledankle/home-planner/internal/auth"
@@ -11,15 +13,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// cookieSecure returns true unless COOKIE_SECURE is explicitly set to "false" or "0".
+// Defaults to true so production deployments are secure without extra configuration.
+func cookieSecure() bool {
+	val := os.Getenv("COOKIE_SECURE")
+	if val == "" {
+		return true
+	}
+	return strings.ToLower(val) != "false" && val != "0"
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type AuthHandler struct{}
+type AuthHandler struct {
+	store *db.Store
+}
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(store *db.Store) *AuthHandler {
+	return &AuthHandler{store: store}
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
@@ -43,7 +57,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Get user by email
-	user, err := db.GetUserByEmail(c.Context(), req.Email)
+	user, err := h.store.GetUserByEmail(c.Context(), req.Email)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -84,18 +98,10 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Hash and store refresh token
-	hashedRefreshToken, err := bcrypt.GenerateFromPassword([]byte(tokens.RefreshToken), bcrypt.DefaultCost)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "INTERNAL_ERROR",
-				"message": "Failed to process authentication",
-			},
-		})
-	}
+	hashedRefreshToken := db.HashToken(tokens.RefreshToken)
 
 	userUUID, _ := uuid.Parse(user.ID)
-	if err := db.StoreRefreshToken(userUUID, string(hashedRefreshToken), tokens.RefreshExpiry); err != nil {
+	if err := h.store.StoreRefreshToken(userUUID, hashedRefreshToken, tokens.RefreshExpiry); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
 				"code":    "INTERNAL_ERROR",
@@ -110,7 +116,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Value:    tokens.AccessToken,
 		Expires:  tokens.AccessExpiry,
 		HTTPOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   cookieSecure(),
 		SameSite: "Strict",
 		Path:     "/",
 	})
@@ -120,7 +126,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Value:    tokens.RefreshToken,
 		Expires:  tokens.RefreshExpiry,
 		HTTPOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   cookieSecure(),
 		SameSite: "Strict",
 		Path:     "/",
 	})
@@ -149,7 +155,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	}
 
 	// Validate token against database using bcrypt comparison
-	userID, err := db.ValidateRefreshToken(refreshToken)
+	userID, err := h.store.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		// Try with the raw token in case hash doesn't match (for comparison)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -162,7 +168,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 
 	// Get user details
 	userUUID := userID.String()
-	user, err := db.GetUserByID(c.Context(), userUUID)
+	user, err := h.store.GetUserByID(c.Context(), userUUID)
 	if err != nil || user == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -189,7 +195,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		Value:    tokens.AccessToken,
 		Expires:  tokens.AccessExpiry,
 		HTTPOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   cookieSecure(),
 		SameSite: "Strict",
 		Path:     "/",
 	})
@@ -206,7 +212,7 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 
 	// Delete refresh token from database if present
 	if refreshToken != "" {
-		db.DeleteRefreshTokenByValue(refreshToken)
+		h.store.DeleteRefreshTokenByValue(refreshToken)
 	}
 
 	// Clear cookies
@@ -254,7 +260,7 @@ func (h *AuthHandler) Me(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := db.GetUserByID(c.Context(), userUUID)
+	user, err := h.store.GetUserByID(c.Context(), userUUID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{

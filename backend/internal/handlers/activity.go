@@ -28,10 +28,12 @@ type ActivityPlan struct {
 	Name string `json:"name"`
 }
 
-type ActivityHandler struct{}
+type ActivityHandler struct {
+	store *db.Store
+}
 
-func NewActivityHandler() *ActivityHandler {
-	return &ActivityHandler{}
+func NewActivityHandler(store *db.Store) *ActivityHandler {
+	return &ActivityHandler{store: store}
 }
 
 func (h *ActivityHandler) List(c *fiber.Ctx) error {
@@ -62,7 +64,7 @@ func (h *ActivityHandler) List(c *fiber.Ctx) error {
 		}
 	}
 
-	result, err := db.ListActivities(c.Context(), filters)
+	result, err := h.store.ListActivities(c.Context(), filters)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -141,7 +143,7 @@ func (h *ActivityHandler) ListForPlan(c *fiber.Ctx) error {
 		}
 	}
 
-	result, err := db.ListActivitiesForPlan(c.Context(), planID, page, limit)
+	result, err := h.store.ListActivitiesForPlan(c.Context(), planID, page, limit)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{

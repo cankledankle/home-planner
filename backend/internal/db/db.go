@@ -13,17 +13,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var Pool *pgxpool.Pool
+// Store holds the database connection pool and provides all DB operations.
+type Store struct {
+	pool *pgxpool.Pool
+}
 
-func Connect() error {
+// NewStore creates a Store from an existing pool.
+func NewStore(pool *pgxpool.Pool) *Store {
+	return &Store{pool: pool}
+}
+
+func (s *Store) Close() {
+	s.pool.Close()
+}
+
+func (s *Store) Ping() error {
+	return s.pool.Ping(context.Background())
+}
+
+func Connect() (*pgxpool.Pool, error) {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		return fmt.Errorf("DATABASE_URL is not set")
+		return nil, fmt.Errorf("DATABASE_URL is not set")
 	}
 
 	poolConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse connection string: %w", err)
+		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
 	// Configure connection pool limits with environment variable overrides
@@ -65,28 +81,14 @@ func Connect() error {
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
 	if err := pool.Ping(context.Background()); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	Pool = pool
-	return nil
-}
-
-func Close() {
-	if Pool != nil {
-		Pool.Close()
-	}
-}
-
-func Ping() error {
-	if Pool == nil {
-		return fmt.Errorf("database pool is not initialized")
-	}
-	return Pool.Ping(context.Background())
+	return pool, nil
 }
 
 func RunMigrations() error {

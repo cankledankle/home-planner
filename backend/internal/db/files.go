@@ -30,8 +30,8 @@ type FileWithUploader struct {
 	UploadedByUser *UserInfo
 }
 
-func GetFilesByPlanID(ctx context.Context, planID string) (map[string][]FileWithUploader, error) {
-	rows, err := Pool.Query(ctx, `
+func (s *Store) GetFilesByPlanID(ctx context.Context, planID string) (map[string][]FileWithUploader, error) {
+	rows, err := s.pool.Query(ctx, `
 		SELECT f.id, f.plan_id, f.category, f.slot, f.filename, f.storage_key, 
 		       f.file_type, f.size_bytes, f.uploaded_at, f.uploaded_by,
 		       u.id, u.name
@@ -82,9 +82,9 @@ func GetFilesByPlanID(ctx context.Context, planID string) (map[string][]FileWith
 	return result, nil
 }
 
-func GetFileByID(ctx context.Context, fileID string) (*FileRow, error) {
+func (s *Store) GetFileByID(ctx context.Context, fileID string) (*FileRow, error) {
 	var f FileRow
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT id, plan_id, category, slot, filename, storage_key, 
 		       file_type, size_bytes, uploaded_at, uploaded_by
 		FROM files
@@ -102,7 +102,7 @@ func GetFileByID(ctx context.Context, fileID string) (*FileRow, error) {
 	return &f, nil
 }
 
-func CreateFile(ctx context.Context, planID, category, slot, filename, storageKey, fileType string, sizeBytes int64, uploadedBy string) (*FileRow, error) {
+func (s *Store) CreateFile(ctx context.Context, planID, category, slot, filename, storageKey, fileType string, sizeBytes int64, uploadedBy string) (*FileRow, error) {
 	var f FileRow
 
 	var slotPtr *string
@@ -115,7 +115,7 @@ func CreateFile(ctx context.Context, planID, category, slot, filename, storageKe
 		uploadedByPtr = &uploadedBy
 	}
 
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		INSERT INTO files (plan_id, category, slot, filename, storage_key, file_type, size_bytes, uploaded_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, plan_id, category, slot, filename, storage_key, file_type, size_bytes, uploaded_at, uploaded_by
@@ -129,8 +129,8 @@ func CreateFile(ctx context.Context, planID, category, slot, filename, storageKe
 	return &f, nil
 }
 
-func DeleteFileByID(ctx context.Context, fileID string) error {
-	result, err := Pool.Exec(ctx, "DELETE FROM files WHERE id = $1", fileID)
+func (s *Store) DeleteFileByID(ctx context.Context, fileID string) error {
+	result, err := s.pool.Exec(ctx, "DELETE FROM files WHERE id = $1", fileID)
 	if err != nil {
 		return err
 	}
@@ -140,9 +140,9 @@ func DeleteFileByID(ctx context.Context, fileID string) error {
 	return nil
 }
 
-func GetFileByPlanAndSlot(ctx context.Context, planID, slot string) (*FileRow, error) {
+func (s *Store) GetFileByPlanAndSlot(ctx context.Context, planID, slot string) (*FileRow, error) {
 	var f FileRow
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT id, plan_id, category, slot, filename, storage_key, 
 		       file_type, size_bytes, uploaded_at, uploaded_by
 		FROM files
@@ -160,7 +160,7 @@ func GetFileByPlanAndSlot(ctx context.Context, planID, slot string) (*FileRow, e
 	return &f, nil
 }
 
-func UpsertWebsiteFile(ctx context.Context, planID, slot, filename, storageKey, fileType string, sizeBytes int64, uploadedBy string) (*FileRow, error) {
+func (s *Store) UpsertWebsiteFile(ctx context.Context, planID, slot, filename, storageKey, fileType string, sizeBytes int64, uploadedBy string) (*FileRow, error) {
 	var f FileRow
 
 	var uploadedByPtr *string
@@ -168,7 +168,7 @@ func UpsertWebsiteFile(ctx context.Context, planID, slot, filename, storageKey, 
 		uploadedByPtr = &uploadedBy
 	}
 
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		INSERT INTO files (plan_id, category, slot, filename, storage_key, file_type, size_bytes, uploaded_by)
 		VALUES ($1, 'website', $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (plan_id, slot) WHERE category = 'website' AND slot IS NOT NULL
@@ -190,7 +190,7 @@ func UpsertWebsiteFile(ctx context.Context, planID, slot, filename, storageKey, 
 	return &f, nil
 }
 
-func DeleteFilesByPlanID(ctx context.Context, planID string) error {
-	_, err := Pool.Exec(ctx, "DELETE FROM files WHERE plan_id = $1", planID)
+func (s *Store) DeleteFilesByPlanID(ctx context.Context, planID string) error {
+	_, err := s.pool.Exec(ctx, "DELETE FROM files WHERE plan_id = $1", planID)
 	return err
 }

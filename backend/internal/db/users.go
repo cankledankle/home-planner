@@ -18,10 +18,10 @@ type UserRow struct {
 	UpdatedAt    time.Time
 }
 
-func GetUserByID(ctx context.Context, userID string) (*UserRow, error) {
+func (s *Store) GetUserByID(ctx context.Context, userID string) (*UserRow, error) {
 	var user UserRow
 
-	err := Pool.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		"SELECT id, name, email, password_hash, role, created_at, updated_at FROM users WHERE id = $1",
 		userID).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -34,10 +34,10 @@ func GetUserByID(ctx context.Context, userID string) (*UserRow, error) {
 	return &user, nil
 }
 
-func GetUserByEmail(ctx context.Context, email string) (*UserRow, error) {
+func (s *Store) GetUserByEmail(ctx context.Context, email string) (*UserRow, error) {
 	var user UserRow
 
-	err := Pool.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		"SELECT id, name, email, password_hash, role, created_at, updated_at FROM users WHERE email = $1",
 		email).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
@@ -50,8 +50,8 @@ func GetUserByEmail(ctx context.Context, email string) (*UserRow, error) {
 	return &user, nil
 }
 
-func GetAllUsers(ctx context.Context) ([]UserRow, error) {
-	rows, err := Pool.Query(ctx,
+func (s *Store) GetAllUsers(ctx context.Context) ([]UserRow, error) {
+	rows, err := s.pool.Query(ctx,
 		"SELECT id, name, email, password_hash, role, created_at, updated_at FROM users ORDER BY created_at DESC")
 	if err != nil {
 		return nil, err
@@ -75,14 +75,14 @@ func GetAllUsers(ctx context.Context) ([]UserRow, error) {
 	return users, nil
 }
 
-func CreateUser(ctx context.Context, name, email, password, role string) (*UserRow, error) {
+func (s *Store) CreateUser(ctx context.Context, name, email, password, role string) (*UserRow, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
 	var user UserRow
-	err = Pool.QueryRow(ctx,
+	err = s.pool.QueryRow(ctx,
 		`INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, password_hash, role, created_at, updated_at`,
 		name, email, string(hashedPassword), role).Scan(
@@ -94,9 +94,9 @@ func CreateUser(ctx context.Context, name, email, password, role string) (*UserR
 	return &user, nil
 }
 
-func UpdateUser(ctx context.Context, userID, name, email, role string) (*UserRow, error) {
+func (s *Store) UpdateUser(ctx context.Context, userID, name, email, role string) (*UserRow, error) {
 	var user UserRow
-	err := Pool.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`UPDATE users SET name = $2, email = $3, role = $4, updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, name, email, password_hash, role, created_at, updated_at`,
@@ -112,13 +112,13 @@ func UpdateUser(ctx context.Context, userID, name, email, role string) (*UserRow
 	return &user, nil
 }
 
-func UpdateUserPassword(ctx context.Context, userID, password string) error {
+func (s *Store) UpdateUserPassword(ctx context.Context, userID, password string) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	result, err := Pool.Exec(ctx,
+	result, err := s.pool.Exec(ctx,
 		"UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1",
 		userID, string(hashedPassword))
 	if err != nil {
@@ -132,8 +132,8 @@ func UpdateUserPassword(ctx context.Context, userID, password string) error {
 	return nil
 }
 
-func DeleteUser(ctx context.Context, userID string) error {
-	result, err := Pool.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
+func (s *Store) DeleteUser(ctx context.Context, userID string) error {
+	result, err := s.pool.Exec(ctx, "DELETE FROM users WHERE id = $1", userID)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func DeleteUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func IsEmailTaken(ctx context.Context, email string, excludeUserID *string) (bool, error) {
+func (s *Store) IsEmailTaken(ctx context.Context, email string, excludeUserID *string) (bool, error) {
 	var query string
 	var args []interface{}
 
@@ -158,7 +158,7 @@ func IsEmailTaken(ctx context.Context, email string, excludeUserID *string) (boo
 	}
 
 	var count int
-	err := Pool.QueryRow(ctx, query, args...).Scan(&count)
+	err := s.pool.QueryRow(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return false, err
 	}

@@ -15,11 +15,12 @@ import (
 )
 
 type ExportHandler struct {
+	store    *db.Store
 	r2Client *storage.R2Client
 }
 
-func NewExportHandler(r2Client *storage.R2Client) *ExportHandler {
-	return &ExportHandler{r2Client: r2Client}
+func NewExportHandler(store *db.Store, r2Client *storage.R2Client) *ExportHandler {
+	return &ExportHandler{store: store, r2Client: r2Client}
 }
 
 // Export preset constants - must match frontend contracts.ts
@@ -119,7 +120,7 @@ func (h *ExportHandler) ExportCSV(c *fiber.Ctx) error {
 
 	// WP All Import preset includes image slots, so we need files
 	if preset == ExportPresetWPAllImport {
-		plans, err := db.GetPlansWithFilesForExport(ctx, planIDs)
+		plans, err := h.store.GetPlansWithFilesForExport(ctx, planIDs)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": fiber.Map{
@@ -162,7 +163,7 @@ func (h *ExportHandler) ExportCSV(c *fiber.Ctx) error {
 	}
 
 	// General and custom presets - no files needed
-	plans, err := db.GetPlansForExport(ctx, planIDs)
+	plans, err := h.store.GetPlansForExport(ctx, planIDs)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -315,7 +316,7 @@ func (h *ExportHandler) ExportZIP(c *fiber.Ctx) error {
 	}
 
 	ctx := c.Context()
-	files, err := db.GetFilesForExport(ctx, planIDs, categories)
+	files, err := h.store.GetFilesForExport(ctx, planIDs, categories)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{

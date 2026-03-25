@@ -1,15 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
-	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/cankledankle/home-planner/internal/db"
 	"github.com/cankledankle/home-planner/internal/models"
-	"github.com/cankledankle/home-planner/internal/processing"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -56,10 +51,12 @@ type DuplicatePlanRequest struct {
 	Name string `json:"name"`
 }
 
-type PlanHandler struct{}
+type PlanHandler struct {
+	store *db.Store
+}
 
-func NewPlanHandler() *PlanHandler {
-	return &PlanHandler{}
+func NewPlanHandler(store *db.Store) *PlanHandler {
+	return &PlanHandler{store: store}
 }
 
 func (h *PlanHandler) List(c *fiber.Ctx) error {
@@ -115,7 +112,7 @@ func (h *PlanHandler) List(c *fiber.Ctx) error {
 		}
 	}
 
-	result, err := db.ListPlans(c.Context(), filters)
+	result, err := h.store.ListPlans(c.Context(), filters)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -166,7 +163,7 @@ func (h *PlanHandler) Get(c *fiber.Ctx) error {
 		})
 	}
 
-	plan, err := db.GetPlanByID(c.Context(), planID)
+	plan, err := h.store.GetPlanByID(c.Context(), planID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -185,7 +182,7 @@ func (h *PlanHandler) Get(c *fiber.Ctx) error {
 		})
 	}
 
-	files, err := db.GetFilesByPlanID(c.Context(), planID)
+	files, err := h.store.GetFilesByPlanID(c.Context(), planID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -271,7 +268,7 @@ func (h *PlanHandler) Create(c *fiber.Ctx) error {
 		CreatedBy:         userID,
 	}
 
-	plan, err := db.CreatePlan(c.Context(), input)
+	plan, err := h.store.CreatePlan(c.Context(), input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -282,7 +279,7 @@ func (h *PlanHandler) Create(c *fiber.Ctx) error {
 	}
 
 	userUUID, _ := uuid.Parse(userID)
-	db.LogActivity(c.Context(), &userUUID, strPtr(plan.ID), "plan.created", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, strPtr(plan.ID), "plan.created", map[string]interface{}{
 		"name": plan.Name,
 	})
 
@@ -369,7 +366,7 @@ func (h *PlanHandler) Update(c *fiber.Ctx) error {
 		UpdatedBy:         userID,
 	}
 
-	plan, err := db.UpdatePlan(c.Context(), planID, input)
+	plan, err := h.store.UpdatePlan(c.Context(), planID, input)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -390,7 +387,7 @@ func (h *PlanHandler) Update(c *fiber.Ctx) error {
 
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(plan.ID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.updated", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.updated", map[string]interface{}{
 		"name": plan.Name,
 	})
 
@@ -431,7 +428,7 @@ func (h *PlanHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.SoftDeletePlan(c.Context(), planID)
+	err := h.store.SoftDeletePlan(c.Context(), planID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -452,7 +449,7 @@ func (h *PlanHandler) Delete(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.deleted", map[string]interface{}{})
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.deleted", map[string]interface{}{})
 
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
@@ -472,7 +469,7 @@ func (h *PlanHandler) Restore(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.RestorePlan(c.Context(), planID)
+	err := h.store.RestorePlan(c.Context(), planID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -493,7 +490,7 @@ func (h *PlanHandler) Restore(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.restored", map[string]interface{}{})
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.restored", map[string]interface{}{})
 
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
@@ -534,7 +531,7 @@ func (h *PlanHandler) Duplicate(c *fiber.Ctx) error {
 
 	userID := c.Locals("userID").(string)
 
-	plan, err := db.DuplicatePlan(c.Context(), planID, req.Name, userID)
+	plan, err := h.store.DuplicatePlan(c.Context(), planID, req.Name, userID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -555,7 +552,7 @@ func (h *PlanHandler) Duplicate(c *fiber.Ctx) error {
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(plan.ID)
 	sourceUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.duplicated", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.duplicated", map[string]interface{}{
 		"source_plan_id": sourceUUID,
 		"new_name":       plan.Name,
 	})
@@ -598,7 +595,7 @@ func (h *PlanHandler) Flag(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.FlagPlan(c.Context(), planID)
+	err := h.store.FlagPlan(c.Context(), planID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -619,7 +616,7 @@ func (h *PlanHandler) Flag(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.flagged", map[string]interface{}{})
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.flagged", map[string]interface{}{})
 
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
@@ -639,7 +636,7 @@ func (h *PlanHandler) Unflag(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.UnflagPlan(c.Context(), planID)
+	err := h.store.UnflagPlan(c.Context(), planID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -660,7 +657,7 @@ func (h *PlanHandler) Unflag(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "plan.unflagged", map[string]interface{}{})
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "plan.unflagged", map[string]interface{}{})
 
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
@@ -757,7 +754,7 @@ func formatFileList(files []db.FileWithUploader) []fiber.Map {
 }
 
 func (h *PlanHandler) GetStats(c *fiber.Ctx) error {
-	stats, err := db.GetDashboardStats(c.Context())
+	stats, err := h.store.GetDashboardStats(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -780,7 +777,7 @@ func (h *PlanHandler) GetRecent(c *fiber.Ctx) error {
 		}
 	}
 
-	plans, err := db.GetRecentPlans(c.Context(), limit)
+	plans, err := h.store.GetRecentPlans(c.Context(), limit)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -814,192 +811,3 @@ func (h *PlanHandler) GetRecent(c *fiber.Ctx) error {
 	})
 }
 
-type BulkFileUploadRequest struct {
-	PlanID string `json:"plan_id"`
-	Slot   string `json:"slot"`
-}
-
-type BulkFileUploadResult struct {
-	Success  bool   `json:"success"`
-	PlanID   string `json:"plan_id"`
-	Slot     string `json:"slot"`
-	Filename string `json:"filename"`
-	Message  string `json:"message,omitempty"`
-}
-
-func (h *PlanHandler) BulkUploadFiles(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
-
-	form, err := c.MultipartForm()
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": "Failed to parse multipart form",
-			},
-		})
-	}
-
-	metadataJSON := form.Value["metadata"]
-	if len(metadataJSON) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": "Metadata is required",
-			},
-		})
-	}
-
-	var requests []BulkFileUploadRequest
-	if err := json.Unmarshal([]byte(metadataJSON[0]), &requests); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": "Invalid metadata JSON",
-			},
-		})
-	}
-
-	files := form.File["files"]
-	if len(files) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": "No files provided",
-			},
-		})
-	}
-
-	if len(files) != len(requests) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "VALIDATION_ERROR",
-				"message": "Number of files must match number of metadata entries",
-			},
-		})
-	}
-
-	results := make([]BulkFileUploadResult, len(files))
-
-	for i, fileHeader := range files {
-		req := requests[i]
-		result := BulkFileUploadResult{
-			PlanID:   req.PlanID,
-			Slot:     req.Slot,
-			Filename: fileHeader.Filename,
-		}
-
-		if !validWebsiteSlots[req.Slot] {
-			result.Success = false
-			result.Message = "Invalid slot name"
-			results[i] = result
-			continue
-		}
-
-		plan, err := db.GetPlanByID(c.Context(), req.PlanID)
-		if err != nil {
-			result.Success = false
-			result.Message = "Database error"
-			results[i] = result
-			continue
-		}
-		if plan == nil {
-			result.Success = false
-			result.Message = "Plan not found"
-			results[i] = result
-			continue
-		}
-
-		contentType := fileHeader.Header.Get("Content-Type")
-		if contentType == "" {
-			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-			switch ext {
-			case ".jpg", ".jpeg":
-				contentType = "image/jpeg"
-			case ".png":
-				contentType = "image/png"
-			}
-		}
-
-		if !validImageTypes[contentType] {
-			result.Success = false
-			result.Message = "Only JPEG and PNG images are allowed"
-			results[i] = result
-			continue
-		}
-
-		file, err := fileHeader.Open()
-		if err != nil {
-			result.Success = false
-			result.Message = "Failed to read file"
-			results[i] = result
-			continue
-		}
-
-		fileData := make([]byte, fileHeader.Size)
-		_, err = file.Read(fileData)
-		file.Close()
-		if err != nil {
-			result.Success = false
-			result.Message = "Failed to read file data"
-			results[i] = result
-			continue
-		}
-
-		// Process the image
-		isPoster := req.Slot == "poster"
-		processResult, err := processing.ProcessWebsiteImage(fileData, contentType, isPoster)
-		if err != nil {
-			result.Success = false
-			result.Message = fmt.Sprintf("Image processing failed: %v", err)
-			results[i] = result
-			continue
-		}
-
-		// Use standardized filename and storage key
-		storageKey := processing.GenerateStorageKey(plan.Slug, req.Slot)
-		processedFilename := processing.StandardizeFilenameForSlot(fileHeader.Filename, plan.Slug, req.Slot)
-
-		_, err = db.UpsertWebsiteFile(c.Context(), req.PlanID, req.Slot, processedFilename, storageKey, "image/jpeg", processResult.SizeBytes, userID)
-		if err != nil {
-			result.Success = false
-			result.Message = fmt.Sprintf("Failed to save file: %v", err)
-			results[i] = result
-			continue
-		}
-
-		db.RecalculatePlanStatus(c.Context(), req.PlanID)
-
-		userUUID, _ := uuid.Parse(userID)
-		planUUID, _ := uuid.Parse(req.PlanID)
-		db.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
-			"filename":       processedFilename,
-			"slot":           req.Slot,
-			"category":       "website",
-			"original_size":  processResult.OriginalSize,
-			"processed_size": processResult.SizeBytes,
-		})
-
-		result.Success = true
-		result.Message = fmt.Sprintf("Processed: %dKB → %dKB", processResult.OriginalSize/1024, processResult.SizeBytes/1024)
-		results[i] = result
-	}
-
-	successCount := 0
-	for _, r := range results {
-		if r.Success {
-			successCount++
-		}
-	}
-
-	return c.JSON(fiber.Map{
-		"data": fiber.Map{
-			"results": results,
-			"summary": fiber.Map{
-				"total":   len(results),
-				"success": successCount,
-				"failed":  len(results) - successCount,
-			},
-		},
-	})
-}

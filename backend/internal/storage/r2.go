@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -129,10 +130,8 @@ func (c *R2Client) FileExists(ctx context.Context, key string) (bool, error) {
 	_, err := c.client.HeadObject(ctx, input)
 	if err != nil {
 		var notFoundErr *types.NotFound
-		if fmt.Sprintf("%T", err) == "*types.NotFound" || fmt.Sprintf("%v", err) == "NotFound" {
-			return false, nil
-		}
-		if notFoundErr != nil {
+		var noSuchKey *types.NoSuchKey
+		if errors.As(err, &notFoundErr) || errors.As(err, &noSuchKey) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check file existence: %w", err)

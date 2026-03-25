@@ -24,14 +24,16 @@ type UpdatePasswordRequest struct {
 	Password string `json:"password"`
 }
 
-type UserHandler struct{}
+type UserHandler struct {
+	store *db.Store
+}
 
-func NewUserHandler() *UserHandler {
-	return &UserHandler{}
+func NewUserHandler(store *db.Store) *UserHandler {
+	return &UserHandler{store: store}
 }
 
 func (h *UserHandler) List(c *fiber.Ctx) error {
-	users, err := db.GetAllUsers(c.Context())
+	users, err := h.store.GetAllUsers(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -88,7 +90,7 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	taken, err := db.IsEmailTaken(c.Context(), req.Email, nil)
+	taken, err := h.store.IsEmailTaken(c.Context(), req.Email, nil)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -107,7 +109,7 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := db.CreateUser(c.Context(), req.Name, req.Email, req.Password, req.Role)
+	user, err := h.store.CreateUser(c.Context(), req.Name, req.Email, req.Password, req.Role)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -169,7 +171,7 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	taken, err := db.IsEmailTaken(c.Context(), req.Email, &userID)
+	taken, err := h.store.IsEmailTaken(c.Context(), req.Email, &userID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -188,7 +190,7 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := db.UpdateUser(c.Context(), userID, req.Name, req.Email, req.Role)
+	user, err := h.store.UpdateUser(c.Context(), userID, req.Name, req.Email, req.Role)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -250,7 +252,7 @@ func (h *UserHandler) UpdatePassword(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.UpdateUserPassword(c.Context(), userID, req.Password)
+	err := h.store.UpdateUserPassword(c.Context(), userID, req.Password)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -296,7 +298,7 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	err := db.DeleteUser(c.Context(), userID)
+	err := h.store.DeleteUser(c.Context(), userID)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

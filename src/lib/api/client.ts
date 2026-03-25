@@ -17,15 +17,20 @@ export class ApiClient {
 	): Promise<Response> {
 		const url = `${this.baseUrl}${endpoint}`;
 
-		const defaultOptions: RequestInit = {
-			credentials: 'include',
-			headers: {
-				'Content-Type': 'application/json',
-				...options.headers
-			}
+		// Do not set Content-Type for FormData — the browser must set the multipart boundary.
+		const isFormData = options.body instanceof FormData;
+		const headers: Record<string, string> = {
+			...(options.headers as Record<string, string>)
 		};
+		if (!isFormData) {
+			headers['Content-Type'] = 'application/json';
+		}
 
-		const response = await fetch(url, { ...defaultOptions, ...options });
+		const response = await fetch(url, {
+			credentials: 'include',
+			...options,
+			headers
+		});
 
 		// Only try to refresh token for non-auth endpoints
 		if (response.status === 401 && !skipAuthRetry) {
@@ -151,6 +156,42 @@ export class ApiClient {
 
 		const data = await response.json();
 		return data.data;
+	}
+
+	// getRaw returns the full JSON envelope without unwrapping .data.
+	// Use for paginated endpoints that return { data: [...], meta: {...} }.
+	async getRaw<T>(endpoint: string): Promise<T> {
+		const response = await this.fetch(endpoint);
+		if (!response.ok) {
+			const error: ApiError = await response.json();
+			throw new Error(error.error?.message || 'Request failed');
+		}
+		return response.json();
+	}
+
+	// postFormData sends a FormData body and returns the unwrapped .data field.
+	// Content-Type is intentionally omitted so the browser sets the multipart boundary.
+	async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+		const response = await this.fetch(endpoint, {
+			method: 'POST',
+			body: formData
+		});
+		if (!response.ok) {
+			const error: ApiError = await response.json();
+			throw new Error(error.error?.message || 'Request failed');
+		}
+		const data = await response.json();
+		return data.data;
+	}
+
+	// getBlob fetches a binary response (e.g., CSV or ZIP export).
+	async getBlob(endpoint: string): Promise<Blob> {
+		const response = await this.fetch(endpoint);
+		if (!response.ok) {
+			const error: ApiError = await response.json();
+			throw new Error(error.error?.message || 'Request failed');
+		}
+		return response.blob();
 	}
 }
 

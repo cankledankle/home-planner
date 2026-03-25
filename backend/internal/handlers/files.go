@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -37,16 +39,18 @@ var validCategories = map[string]bool{
 }
 
 const (
-	maxImageSize = processing.MaxWebsiteImageSize  // 5MB
-	maxFileSize  = processing.MaxReferenceFileSize // 50MB
+	maxImageSize     = processing.MaxWebsiteImageSize  // 5MB
+	maxFileSize      = processing.MaxReferenceFileSize // 50MB
+	maxBulkFileCount = 20
 )
 
 type FileHandler struct {
+	store    *db.Store
 	r2Client *storage.R2Client
 }
 
-func NewFileHandler(r2Client *storage.R2Client) *FileHandler {
-	return &FileHandler{r2Client: r2Client}
+func NewFileHandler(store *db.Store, r2Client *storage.R2Client) *FileHandler {
+	return &FileHandler{store: store, r2Client: r2Client}
 }
 
 func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
@@ -60,7 +64,7 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 		})
 	}
 
-	plan, err := db.GetPlanByID(c.Context(), planID)
+	plan, err := h.store.GetPlanByID(c.Context(), planID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -138,13 +142,20 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 	}
 	defer file.Close()
 
-	fileData := make([]byte, fileHeader.Size)
-	_, err = file.Read(fileData)
+	fileData, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
 				"code":    "INTERNAL_ERROR",
 				"message": "Failed to read file data",
+			},
+		})
+	}
+	if int64(len(fileData)) > maxImageSize {
+		return c.Status(fiber.StatusRequestEntityTooLarge).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "FILE_TOO_LARGE",
+				"message": fmt.Sprintf("File exceeds %dMB limit", maxImageSize/1024/1024),
 			},
 		})
 	}
@@ -179,7 +190,7 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 
 	userID := c.Locals("userID").(string)
 
-	fileRow, err := db.UpsertWebsiteFile(c.Context(), planID, slot, processedFilename, storageKey, "image/jpeg", processResult.SizeBytes, userID)
+	fileRow, err := h.store.UpsertWebsiteFile(c.Context(), planID, slot, processedFilename, storageKey, "image/jpeg", processResult.SizeBytes, userID)
 	if err != nil {
 		if h.r2Client != nil {
 			h.r2Client.DeleteFile(c.Context(), storageKey)
@@ -192,14 +203,14 @@ func (h *FileHandler) UploadWebsite(c *fiber.Ctx) error {
 		})
 	}
 
-	_, err = db.RecalculatePlanStatus(c.Context(), planID)
+	_, err = h.store.RecalculatePlanStatus(c.Context(), planID)
 	if err != nil {
 		fmt.Printf("Failed to recalculate plan status: %v\n", err)
 	}
 
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
 		"filename":       processedFilename,
 		"slot":           slot,
 		"category":       "website",
@@ -234,7 +245,7 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 		})
 	}
 
-	plan, err := db.GetPlanByID(c.Context(), planID)
+	plan, err := h.store.GetPlanByID(c.Context(), planID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -355,7 +366,7 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 			}
 		}
 
-		fileRow, err := db.CreateFile(c.Context(), planID, category, "", fileHeader.Filename, storageKey, contentType, fileHeader.Size, userID)
+		fileRow, err := h.store.CreateFile(c.Context(), planID, category, "", fileHeader.Filename, storageKey, contentType, fileHeader.Size, userID)
 		if err != nil {
 			if h.r2Client != nil {
 				h.r2Client.DeleteFile(c.Context(), storageKey)
@@ -373,7 +384,7 @@ func (h *FileHandler) Upload(c *fiber.Ctx) error {
 
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(planID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
 		"count":    len(uploadedFiles),
 		"category": category,
 	})
@@ -394,7 +405,7 @@ func (h *FileHandler) List(c *fiber.Ctx) error {
 		})
 	}
 
-	files, err := db.GetFilesByPlanID(c.Context(), planID)
+	files, err := h.store.GetFilesByPlanID(c.Context(), planID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -420,7 +431,7 @@ func (h *FileHandler) GetURL(c *fiber.Ctx) error {
 		})
 	}
 
-	file, err := db.GetFileByID(c.Context(), fileID)
+	file, err := h.store.GetFileByID(c.Context(), fileID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -477,7 +488,7 @@ func (h *FileHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	file, err := db.GetFileByID(c.Context(), fileID)
+	file, err := h.store.GetFileByID(c.Context(), fileID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -504,7 +515,7 @@ func (h *FileHandler) Delete(c *fiber.Ctx) error {
 		}
 	}
 
-	err = db.DeleteFileByID(c.Context(), fileID)
+	err = h.store.DeleteFileByID(c.Context(), fileID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -516,7 +527,7 @@ func (h *FileHandler) Delete(c *fiber.Ctx) error {
 
 	// Recalculate plan status if it was a website file
 	if file.Category == "website" && file.Slot != nil {
-		_, err = db.RecalculatePlanStatus(c.Context(), file.PlanID)
+		_, err = h.store.RecalculatePlanStatus(c.Context(), file.PlanID)
 		if err != nil {
 			fmt.Printf("Failed to recalculate plan status: %v\n", err)
 		}
@@ -525,7 +536,7 @@ func (h *FileHandler) Delete(c *fiber.Ctx) error {
 	userID := c.Locals("userID").(string)
 	userUUID, _ := uuid.Parse(userID)
 	planUUID, _ := uuid.Parse(file.PlanID)
-	db.LogActivity(c.Context(), &userUUID, &planUUID, "file.deleted", map[string]interface{}{
+	h.store.LogActivity(c.Context(), &userUUID, &planUUID, "file.deleted", map[string]interface{}{
 		"filename": file.Filename,
 		"category": file.Category,
 	})
@@ -533,6 +544,223 @@ func (h *FileHandler) Delete(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"data": fiber.Map{
 			"message": "File deleted",
+		},
+	})
+}
+
+type BulkFileUploadRequest struct {
+	PlanID string `json:"plan_id"`
+	Slot   string `json:"slot"`
+}
+
+type BulkFileUploadResult struct {
+	Success  bool   `json:"success"`
+	PlanID   string `json:"plan_id"`
+	Slot     string `json:"slot"`
+	Filename string `json:"filename"`
+	Message  string `json:"message,omitempty"`
+}
+
+func (h *FileHandler) BulkUploadFiles(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(string)
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Failed to parse multipart form",
+			},
+		})
+	}
+
+	metadataJSON := form.Value["metadata"]
+	if len(metadataJSON) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Metadata is required",
+			},
+		})
+	}
+
+	var requests []BulkFileUploadRequest
+	if err := json.Unmarshal([]byte(metadataJSON[0]), &requests); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Invalid metadata JSON",
+			},
+		})
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "No files provided",
+			},
+		})
+	}
+
+	if len(files) > maxBulkFileCount {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": fmt.Sprintf("Maximum %d files per bulk request", maxBulkFileCount),
+			},
+		})
+	}
+
+	if len(files) != len(requests) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "VALIDATION_ERROR",
+				"message": "Number of files must match number of metadata entries",
+			},
+		})
+	}
+
+	results := make([]BulkFileUploadResult, len(files))
+
+	for i, fileHeader := range files {
+		req := requests[i]
+		result := BulkFileUploadResult{
+			PlanID:   req.PlanID,
+			Slot:     req.Slot,
+			Filename: fileHeader.Filename,
+		}
+
+		if !validWebsiteSlots[req.Slot] {
+			result.Success = false
+			result.Message = "Invalid slot name"
+			results[i] = result
+			continue
+		}
+
+		plan, err := h.store.GetPlanByID(c.Context(), req.PlanID)
+		if err != nil {
+			result.Success = false
+			result.Message = "Database error"
+			results[i] = result
+			continue
+		}
+		if plan == nil {
+			result.Success = false
+			result.Message = "Plan not found"
+			results[i] = result
+			continue
+		}
+
+		contentType := fileHeader.Header.Get("Content-Type")
+		if contentType == "" {
+			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+			switch ext {
+			case ".jpg", ".jpeg":
+				contentType = "image/jpeg"
+			case ".png":
+				contentType = "image/png"
+			}
+		}
+
+		if !validImageTypes[contentType] {
+			result.Success = false
+			result.Message = "Only JPEG and PNG images are allowed"
+			results[i] = result
+			continue
+		}
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			result.Success = false
+			result.Message = "Failed to read file"
+			results[i] = result
+			continue
+		}
+
+		fileData, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+		file.Close()
+		if err != nil {
+			result.Success = false
+			result.Message = "Failed to read file data"
+			results[i] = result
+			continue
+		}
+		if int64(len(fileData)) > maxImageSize {
+			result.Success = false
+			result.Message = fmt.Sprintf("File exceeds %dMB limit", maxImageSize/1024/1024)
+			results[i] = result
+			continue
+		}
+
+		isPoster := req.Slot == "poster"
+		processResult, err := processing.ProcessWebsiteImage(fileData, contentType, isPoster)
+		if err != nil {
+			result.Success = false
+			result.Message = fmt.Sprintf("Image processing failed: %v", err)
+			results[i] = result
+			continue
+		}
+
+		storageKey := processing.GenerateStorageKey(plan.Slug, req.Slot)
+		processedFilename := processing.StandardizeFilenameForSlot(fileHeader.Filename, plan.Slug, req.Slot)
+
+		// Upload to R2 before DB write — if R2 fails, skip DB to avoid orphan records
+		if h.r2Client != nil {
+			err = h.r2Client.UploadFile(c.Context(), storageKey, processResult.Data, "image/jpeg")
+			if err != nil {
+				result.Success = false
+				result.Message = fmt.Sprintf("Failed to upload to storage: %v", err)
+				results[i] = result
+				continue
+			}
+		}
+
+		_, err = h.store.UpsertWebsiteFile(c.Context(), req.PlanID, req.Slot, processedFilename, storageKey, "image/jpeg", processResult.SizeBytes, userID)
+		if err != nil {
+			// Roll back R2 upload if DB write fails
+			if h.r2Client != nil {
+				h.r2Client.DeleteFile(c.Context(), storageKey)
+			}
+			result.Success = false
+			result.Message = fmt.Sprintf("Failed to save file: %v", err)
+			results[i] = result
+			continue
+		}
+
+		h.store.RecalculatePlanStatus(c.Context(), req.PlanID)
+
+		userUUID, _ := uuid.Parse(userID)
+		planUUID, _ := uuid.Parse(req.PlanID)
+		h.store.LogActivity(c.Context(), &userUUID, &planUUID, "file.uploaded", map[string]interface{}{
+			"filename":       processedFilename,
+			"slot":           req.Slot,
+			"category":       "website",
+			"original_size":  processResult.OriginalSize,
+			"processed_size": processResult.SizeBytes,
+		})
+
+		result.Success = true
+		result.Message = fmt.Sprintf("Processed: %dKB → %dKB", processResult.OriginalSize/1024, processResult.SizeBytes/1024)
+		results[i] = result
+	}
+
+	successCount := 0
+	for _, r := range results {
+		if r.Success {
+			successCount++
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"data": fiber.Map{
+			"results": results,
+			"summary": fiber.Map{
+				"total":   len(results),
+				"success": successCount,
+				"failed":  len(results) - successCount,
+			},
 		},
 	})
 }

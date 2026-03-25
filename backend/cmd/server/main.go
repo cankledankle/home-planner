@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,33 +38,47 @@ func main() {
 	}
 
 	// Connect to database
-	if err := db.Connect(); err != nil {
+	pool, err := db.Connect()
+	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
-	defer db.Close()
+	store := db.NewStore(pool)
+	defer store.Close()
 	log.Println("Database connected")
 
-	// Run migrations
-	if err := db.RunMigrations(); err != nil {
-		log.Fatalf("Migration failed: %v", err)
+	// Run migrations only when explicitly requested
+	if os.Getenv("RUN_MIGRATIONS") == "true" {
+		if err := db.RunMigrations(); err != nil {
+			log.Fatalf("Migration failed: %v", err)
+		}
+		log.Println("Migrations applied")
 	}
-	log.Println("Migrations applied")
 
 	// Seed admin user if env vars are set and no users exist
-	if err := db.SeedAdminUser(); err != nil {
+	if err := store.SeedAdminUser(); err != nil {
 		log.Fatalf("Failed to seed admin user: %v", err)
 	}
 
 	// Cleanup expired refresh tokens on startup
-	if err := db.CleanupExpiredRefreshTokens(); err != nil {
+	if err := store.CleanupExpiredRefreshTokens(); err != nil {
 		log.Printf("Warning: failed to cleanup expired tokens: %v", err)
 	}
 
+	// Trust X-Forwarded-For from the reverse proxy so rate limiting keys on real client IPs.
+	// TRUSTED_PROXIES should be set to the Docker network CIDR in production.
+	trustedProxies := os.Getenv("TRUSTED_PROXIES")
+	if trustedProxies == "" {
+		trustedProxies = "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+	}
+
 	app := fiber.New(fiber.Config{
-		AppName:      "Home Planner API",
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		AppName:                 "Home Planner API",
+		ReadTimeout:             30 * time.Second,
+		WriteTimeout:            30 * time.Second,
+		IdleTimeout:             120 * time.Second,
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          strings.Split(trustedProxies, ","),
+		ProxyHeader:             "X-Forwarded-For",
 	})
 
 	// Middleware
@@ -91,10 +106,10 @@ func main() {
 	}))
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler()
-	userHandler := handlers.NewUserHandler()
-	planHandler := handlers.NewPlanHandler()
-	activityHandler := handlers.NewActivityHandler()
+	authHandler := handlers.NewAuthHandler(store)
+	userHandler := handlers.NewUserHandler(store)
+	planHandler := handlers.NewPlanHandler(store)
+	activityHandler := handlers.NewActivityHandler(store)
 
 	// Initialize R2 client (will return nil if not configured)
 	r2Client, r2Err := storage.NewR2Client()
@@ -103,14 +118,14 @@ func main() {
 	} else {
 		log.Println("R2 storage connected")
 	}
-	exportHandler := handlers.NewExportHandler(r2Client)
-	importHandler := handlers.NewImportHandler()
-	fileHandler := handlers.NewFileHandler(r2Client)
+	exportHandler := handlers.NewExportHandler(store, r2Client)
+	importHandler := handlers.NewImportHandler(store)
+	fileHandler := handlers.NewFileHandler(store, r2Client)
 
 	// Health check endpoint - checks database connectivity
 	app.Get("/health", func(c *fiber.Ctx) error {
 		// Check database connection
-		dbErr := db.Ping()
+		dbErr := store.Ping()
 		if dbErr != nil {
 			return c.Status(503).JSON(fiber.Map{
 				"status":  "error",
@@ -184,7 +199,7 @@ func main() {
 	admin.Get("/import/recent", importHandler.GetRecentImports)
 
 	// Bulk file upload (admin-only)
-	admin.Post("/plans/bulk-files", planHandler.BulkUploadFiles)
+	admin.Post("/plans/bulk-files", fileHandler.BulkUploadFiles)
 
 	// Serve static files from the frontend build
 	// The static files are expected to be at /app/static (in production container)

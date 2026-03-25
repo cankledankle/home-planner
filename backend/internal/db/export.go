@@ -11,7 +11,7 @@ type FileExportRow struct {
 	PlanName string
 }
 
-func GetPlansForExport(ctx context.Context, planIDs []string) ([]*PlanRow, error) {
+func (s *Store) GetPlansForExport(ctx context.Context, planIDs []string) ([]*PlanRow, error) {
 	var query string
 	var args []interface{}
 
@@ -42,7 +42,7 @@ func GetPlansForExport(ctx context.Context, planIDs []string) ([]*PlanRow, error
 		`
 	}
 
-	rows, err := Pool.Query(ctx, query, args...)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ type PlanWithFilesRow struct {
 	Files map[string]string // slot -> filename
 }
 
-func GetPlansWithFilesForExport(ctx context.Context, planIDs []string) ([]*PlanWithFilesRow, error) {
+func (s *Store) GetPlansWithFilesForExport(ctx context.Context, planIDs []string) ([]*PlanWithFilesRow, error) {
 	var query string
 	var args []interface{}
 
@@ -110,7 +110,7 @@ func GetPlansWithFilesForExport(ctx context.Context, planIDs []string) ([]*PlanW
 		`
 	}
 
-	rows, err := Pool.Query(ctx, query, args...)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func GetPlansWithFilesForExport(ctx context.Context, planIDs []string) ([]*PlanW
 	return plans, nil
 }
 
-func GetFilesForExport(ctx context.Context, planIDs []string, categories []string) ([]*FileExportRow, error) {
+func (s *Store) GetFilesForExport(ctx context.Context, planIDs []string, categories []string) ([]*FileExportRow, error) {
 	var conditions []string
 	var args []interface{}
 	argIdx := 1
@@ -197,7 +197,7 @@ func GetFilesForExport(ctx context.Context, planIDs []string, categories []strin
 		ORDER BY p.name, f.category, f.filename
 	`, whereClause)
 
-	rows, err := Pool.Query(ctx, query, args...)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -38,6 +38,23 @@ type PlanRow struct {
 	UpdatedBy         *string
 }
 
+// planColumns is the canonical SELECT/RETURNING column list for plans queries.
+// Update this constant (and scanFields below) when adding or removing columns.
+const planColumns = "id, name, slug, type, style, status, beds, baths, half_baths, " +
+	"main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf, " +
+	"garage_apartment_sf, unfinished_sf, heated_sf, total_sf, " +
+	"notes, deleted_at, created_at, updated_at, created_by, updated_by"
+
+// scanFields returns the scan destinations for a PlanRow in the same order as planColumns.
+func (p *PlanRow) scanFields() []any {
+	return []any{
+		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
+		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
+		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
+		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
+	}
+}
+
 type PlanListFilters struct {
 	Search      string
 	Status      string
@@ -77,12 +94,12 @@ func generateSlug(name string) string {
 	return result.String()
 }
 
-func makeUniqueSlug(ctx context.Context, baseSlug string) (string, error) {
+func (s *Store) makeUniqueSlug(ctx context.Context, baseSlug string) (string, error) {
 	slug := baseSlug
 	suffix := 0
 
 	for {
-		exists, err := CheckSlugExists(ctx, slug, nil)
+		exists, err := s.CheckSlugExists(ctx, slug, nil)
 		if err != nil {
 			return "", err
 		}
@@ -94,7 +111,7 @@ func makeUniqueSlug(ctx context.Context, baseSlug string) (string, error) {
 	}
 }
 
-func CheckSlugExists(ctx context.Context, slug string, excludePlanID *string) (bool, error) {
+func (s *Store) CheckSlugExists(ctx context.Context, slug string, excludePlanID *string) (bool, error) {
 	var query string
 	var args []interface{}
 
@@ -107,7 +124,7 @@ func CheckSlugExists(ctx context.Context, slug string, excludePlanID *string) (b
 	}
 
 	var count int
-	err := Pool.QueryRow(ctx, query, args...).Scan(&count)
+	err := s.pool.QueryRow(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +132,7 @@ func CheckSlugExists(ctx context.Context, slug string, excludePlanID *string) (b
 	return count > 0, nil
 }
 
-func ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, error) {
+func (s *Store) ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, error) {
 	if filters.Page < 1 {
 		filters.Page = 1
 	}
@@ -211,7 +228,7 @@ func ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, e
 
 	countQuery := "SELECT COUNT(*) FROM plans " + whereClause
 	var total int
-	err := Pool.QueryRow(ctx, countQuery, args...).Scan(&total)
+	err := s.pool.QueryRow(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +246,7 @@ func ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, e
 
 	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
 
-	rows, err := Pool.Query(ctx, query, args...)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -238,12 +255,7 @@ func ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, e
 	var plans []PlanRow
 	for rows.Next() {
 		var p PlanRow
-		err := rows.Scan(
-			&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-			&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-			&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-			&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		)
+		err := rows.Scan(p.scanFields()...)
 		if err != nil {
 			return nil, err
 		}
@@ -265,21 +277,16 @@ func ListPlans(ctx context.Context, filters PlanListFilters) (*PaginatedPlans, e
 	}, nil
 }
 
-func GetPlanByID(ctx context.Context, planID string) (*PlanRow, error) {
+func (s *Store) GetPlanByID(ctx context.Context, planID string) (*PlanRow, error) {
 	var p PlanRow
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT id, name, slug, type, style, status, beds, baths, half_baths,
 		       main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
 		       garage_apartment_sf, unfinished_sf, heated_sf, total_sf,
 		       notes, deleted_at, created_at, updated_at, created_by, updated_by
 		FROM plans
 		WHERE id = $1 AND deleted_at IS NULL
-	`, planID).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-	)
+	`, planID).Scan(p.scanFields()...)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -289,21 +296,16 @@ func GetPlanByID(ctx context.Context, planID string) (*PlanRow, error) {
 	return &p, nil
 }
 
-func GetPlanBySlug(ctx context.Context, slug string) (*PlanRow, error) {
+func (s *Store) GetPlanBySlug(ctx context.Context, slug string) (*PlanRow, error) {
 	var p PlanRow
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT id, name, slug, type, style, status, beds, baths, half_baths,
 		       main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
 		       garage_apartment_sf, unfinished_sf, heated_sf, total_sf,
 		       notes, deleted_at, created_at, updated_at, created_by, updated_by
 		FROM plans
 		WHERE slug = $1 AND deleted_at IS NULL
-	`, slug).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-	)
+	`, slug).Scan(p.scanFields()...)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -333,15 +335,15 @@ type CreatePlanInput struct {
 	CreatedBy         string
 }
 
-func CreatePlan(ctx context.Context, input CreatePlanInput) (*PlanRow, error) {
+func (s *Store) CreatePlan(ctx context.Context, input CreatePlanInput) (*PlanRow, error) {
 	baseSlug := generateSlug(input.Name)
-	slug, err := makeUniqueSlug(ctx, baseSlug)
+	slug, err := s.makeUniqueSlug(ctx, baseSlug)
 	if err != nil {
 		return nil, err
 	}
 
 	var p PlanRow
-	err = Pool.QueryRow(ctx, `
+	err = s.pool.QueryRow(ctx, `
 		INSERT INTO plans (
 			name, slug, type, style, beds, baths, half_baths,
 			main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
@@ -358,12 +360,7 @@ func CreatePlan(ctx context.Context, input CreatePlanInput) (*PlanRow, error) {
 		input.MainSF, input.UpperSF, input.LowerSF, input.PorchDeckSF, input.GarageSF,
 		input.GarageApartmentSF, input.UnfinishedSF, input.HeatedSF, input.TotalSF,
 		input.Notes, input.CreatedBy,
-	).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-	)
+	).Scan(p.scanFields()...)
 	if err != nil {
 		return nil, err
 	}
@@ -390,9 +387,9 @@ type UpdatePlanInput struct {
 	UpdatedBy         string
 }
 
-func UpdatePlan(ctx context.Context, planID string, input UpdatePlanInput) (*PlanRow, error) {
+func (s *Store) UpdatePlan(ctx context.Context, planID string, input UpdatePlanInput) (*PlanRow, error) {
 	var p PlanRow
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		UPDATE plans SET
 			name = $2,
 			type = $3,
@@ -423,12 +420,7 @@ func UpdatePlan(ctx context.Context, planID string, input UpdatePlanInput) (*Pla
 		input.MainSF, input.UpperSF, input.LowerSF, input.PorchDeckSF, input.GarageSF,
 		input.GarageApartmentSF, input.UnfinishedSF, input.HeatedSF, input.TotalSF,
 		input.Notes, input.UpdatedBy,
-	).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-	)
+	).Scan(p.scanFields()...)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -438,8 +430,8 @@ func UpdatePlan(ctx context.Context, planID string, input UpdatePlanInput) (*Pla
 	return &p, nil
 }
 
-func SoftDeletePlan(ctx context.Context, planID string) error {
-	result, err := Pool.Exec(ctx,
+func (s *Store) SoftDeletePlan(ctx context.Context, planID string) error {
+	result, err := s.pool.Exec(ctx,
 		"UPDATE plans SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
 		planID)
 	if err != nil {
@@ -451,8 +443,8 @@ func SoftDeletePlan(ctx context.Context, planID string) error {
 	return nil
 }
 
-func RestorePlan(ctx context.Context, planID string) error {
-	result, err := Pool.Exec(ctx,
+func (s *Store) RestorePlan(ctx context.Context, planID string) error {
+	result, err := s.pool.Exec(ctx,
 		"UPDATE plans SET deleted_at = NULL WHERE id = $1 AND deleted_at IS NOT NULL",
 		planID)
 	if err != nil {
@@ -464,8 +456,8 @@ func RestorePlan(ctx context.Context, planID string) error {
 	return nil
 }
 
-func DuplicatePlan(ctx context.Context, sourcePlanID string, newName string, createdBy string) (*PlanRow, error) {
-	source, err := GetPlanByID(ctx, sourcePlanID)
+func (s *Store) DuplicatePlan(ctx context.Context, sourcePlanID string, newName string, createdBy string) (*PlanRow, error) {
+	source, err := s.GetPlanByID(ctx, sourcePlanID)
 	if err != nil {
 		return nil, err
 	}
@@ -474,13 +466,13 @@ func DuplicatePlan(ctx context.Context, sourcePlanID string, newName string, cre
 	}
 
 	baseSlug := generateSlug(newName)
-	slug, err := makeUniqueSlug(ctx, baseSlug)
+	slug, err := s.makeUniqueSlug(ctx, baseSlug)
 	if err != nil {
 		return nil, err
 	}
 
 	var p PlanRow
-	err = Pool.QueryRow(ctx, `
+	err = s.pool.QueryRow(ctx, `
 		INSERT INTO plans (
 			name, slug, type, style, status, beds, baths, half_baths,
 			main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
@@ -497,20 +489,15 @@ func DuplicatePlan(ctx context.Context, sourcePlanID string, newName string, cre
 		source.MainSF, source.UpperSF, source.LowerSF, source.PorchDeckSF, source.GarageSF,
 		source.GarageApartmentSF, source.UnfinishedSF, source.HeatedSF, source.TotalSF,
 		source.Notes, createdBy,
-	).Scan(
-		&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-		&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-		&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-		&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-	)
+	).Scan(p.scanFields()...)
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
 }
 
-func FlagPlan(ctx context.Context, planID string) error {
-	result, err := Pool.Exec(ctx,
+func (s *Store) FlagPlan(ctx context.Context, planID string) error {
+	result, err := s.pool.Exec(ctx,
 		"UPDATE plans SET status = 'flagged' WHERE id = $1 AND deleted_at IS NULL",
 		planID)
 	if err != nil {
@@ -522,8 +509,8 @@ func FlagPlan(ctx context.Context, planID string) error {
 	return nil
 }
 
-func UnflagPlan(ctx context.Context, planID string) error {
-	result, err := Pool.Exec(ctx, `
+func (s *Store) UnflagPlan(ctx context.Context, planID string) error {
+	result, err := s.pool.Exec(ctx, `
 		UPDATE plans SET status = CASE 
 			WHEN EXISTS (
 				SELECT 1 FROM files 
@@ -547,8 +534,8 @@ func UnflagPlan(ctx context.Context, planID string) error {
 	return nil
 }
 
-func GetFilledSlots(ctx context.Context, planID string) ([]string, error) {
-	rows, err := Pool.Query(ctx, `
+func (s *Store) GetFilledSlots(ctx context.Context, planID string) ([]string, error) {
+	rows, err := s.pool.Query(ctx, `
 		SELECT slot FROM files 
 		WHERE plan_id = $1 AND category = 'website' AND slot IS NOT NULL
 	`, planID)
@@ -573,9 +560,9 @@ func GetFilledSlots(ctx context.Context, planID string) ([]string, error) {
 	return slots, nil
 }
 
-func RecalculatePlanStatus(ctx context.Context, planID string) (string, error) {
+func (s *Store) RecalculatePlanStatus(ctx context.Context, planID string) (string, error) {
 	var status string
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		UPDATE plans SET status = CASE 
 			WHEN status = 'flagged' THEN 'flagged'
 			WHEN EXISTS (
@@ -602,13 +589,13 @@ func RecalculatePlanStatus(ctx context.Context, planID string) (string, error) {
 	return status, nil
 }
 
-func LogActivity(ctx context.Context, userID *uuid.UUID, planID *uuid.UUID, action string, detail map[string]interface{}) error {
+func (s *Store) LogActivity(ctx context.Context, userID *uuid.UUID, planID *uuid.UUID, action string, detail map[string]interface{}) error {
 	detailJSON, err := json.Marshal(detail)
 	if err != nil {
 		return err
 	}
 
-	_, err = Pool.Exec(ctx, `
+	_, err = s.pool.Exec(ctx, `
 		INSERT INTO activity_log (user_id, plan_id, action, detail)
 		VALUES ($1, $2, $3, $4)
 	`, userID, planID, action, detailJSON)
@@ -623,10 +610,10 @@ type DashboardStats struct {
 	Flagged    int `json:"flagged"`
 }
 
-func GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
+func (s *Store) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
 	var stats DashboardStats
 
-	err := Pool.QueryRow(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT 
 			COUNT(*) as total,
 			COUNT(*) FILTER (WHERE status = 'complete') as complete,
@@ -643,12 +630,12 @@ func GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
 	return &stats, nil
 }
 
-func GetRecentPlans(ctx context.Context, limit int) ([]PlanRow, error) {
+func (s *Store) GetRecentPlans(ctx context.Context, limit int) ([]PlanRow, error) {
 	if limit < 1 || limit > 50 {
 		limit = 10
 	}
 
-	rows, err := Pool.Query(ctx, `
+	rows, err := s.pool.Query(ctx, `
 		SELECT id, name, slug, type, style, status, beds, baths, half_baths,
 		       main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
 		       garage_apartment_sf, unfinished_sf, heated_sf, total_sf,
@@ -666,12 +653,7 @@ func GetRecentPlans(ctx context.Context, limit int) ([]PlanRow, error) {
 	var plans []PlanRow
 	for rows.Next() {
 		var p PlanRow
-		err := rows.Scan(
-			&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-			&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-			&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-			&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		)
+		err := rows.Scan(p.scanFields()...)
 		if err != nil {
 			return nil, err
 		}
@@ -685,8 +667,8 @@ func GetRecentPlans(ctx context.Context, limit int) ([]PlanRow, error) {
 	return plans, nil
 }
 
-func GetRecentlyImportedPlans(ctx context.Context) ([]PlanRow, error) {
-	rows, err := Pool.Query(ctx, `
+func (s *Store) GetRecentlyImportedPlans(ctx context.Context) ([]PlanRow, error) {
+	rows, err := s.pool.Query(ctx, `
 		SELECT id, name, slug, type, style, status, beds, baths, half_baths,
 		       main_sf, upper_sf, lower_sf, porch_deck_sf, garage_sf,
 		       garage_apartment_sf, unfinished_sf, heated_sf, total_sf,
@@ -704,12 +686,7 @@ func GetRecentlyImportedPlans(ctx context.Context) ([]PlanRow, error) {
 	var plans []PlanRow
 	for rows.Next() {
 		var p PlanRow
-		err := rows.Scan(
-			&p.ID, &p.Name, &p.Slug, &p.Type, &p.Style, &p.Status, &p.Beds, &p.Baths, &p.HalfBaths,
-			&p.MainSF, &p.UpperSF, &p.LowerSF, &p.PorchDeckSF, &p.GarageSF,
-			&p.GarageApartmentSF, &p.UnfinishedSF, &p.HeatedSF, &p.TotalSF,
-			&p.Notes, &p.DeletedAt, &p.CreatedAt, &p.UpdatedAt, &p.CreatedBy, &p.UpdatedBy,
-		)
+		err := rows.Scan(p.scanFields()...)
 		if err != nil {
 			return nil, err
 		}

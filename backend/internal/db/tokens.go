@@ -2,15 +2,24 @@ package db
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func StoreRefreshToken(userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
-	_, err := Pool.Exec(context.Background(),
+// HashToken returns a SHA-256 hex digest of the token.
+// Refresh tokens are already high-entropy random UUIDs, so SHA-256 is appropriate
+// and allows O(1) indexed lookup instead of O(N) bcrypt comparison.
+func HashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
+}
+
+func (s *Store) StoreRefreshToken(userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	_, err := s.pool.Exec(context.Background(),
 		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
 		userID, tokenHash, expiresAt)
 	if err != nil {
@@ -19,35 +28,20 @@ func StoreRefreshToken(userID uuid.UUID, tokenHash string, expiresAt time.Time) 
 	return nil
 }
 
-func ValidateRefreshToken(token string) (uuid.UUID, error) {
-	// Query all non-expired tokens and compare using bcrypt
-	rows, err := Pool.Query(context.Background(),
-		`SELECT user_id, token_hash, expires_at FROM refresh_tokens WHERE expires_at > NOW()`)
+func (s *Store) ValidateRefreshToken(token string) (uuid.UUID, error) {
+	tokenHash := HashToken(token)
+	var userID uuid.UUID
+	err := s.pool.QueryRow(context.Background(),
+		`SELECT user_id FROM refresh_tokens WHERE token_hash = $1 AND expires_at > NOW()`,
+		tokenHash).Scan(&userID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to query refresh tokens: %w", err)
+		return uuid.Nil, fmt.Errorf("invalid refresh token")
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var userID uuid.UUID
-		var storedHash string
-		var expiresAt time.Time
-
-		if err := rows.Scan(&userID, &storedHash, &expiresAt); err != nil {
-			continue
-		}
-
-		// Use bcrypt to compare the incoming token with stored hash
-		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(token)); err == nil {
-			return userID, nil
-		}
-	}
-
-	return uuid.Nil, fmt.Errorf("invalid refresh token")
+	return userID, nil
 }
 
-func DeleteRefreshToken(tokenHash string) error {
-	_, err := Pool.Exec(context.Background(),
+func (s *Store) DeleteRefreshToken(tokenHash string) error {
+	_, err := s.pool.Exec(context.Background(),
 		`DELETE FROM refresh_tokens WHERE token_hash = $1`,
 		tokenHash)
 	if err != nil {
@@ -56,39 +50,19 @@ func DeleteRefreshToken(tokenHash string) error {
 	return nil
 }
 
-func DeleteRefreshTokenByValue(token string) error {
-	// Find the token by comparing with bcrypt, then delete it
-	rows, err := Pool.Query(context.Background(),
-		`SELECT token_hash FROM refresh_tokens WHERE expires_at > NOW()`)
+func (s *Store) DeleteRefreshTokenByValue(token string) error {
+	tokenHash := HashToken(token)
+	_, err := s.pool.Exec(context.Background(),
+		`DELETE FROM refresh_tokens WHERE token_hash = $1`,
+		tokenHash)
 	if err != nil {
-		return fmt.Errorf("failed to query refresh tokens: %w", err)
+		return fmt.Errorf("failed to delete refresh token: %w", err)
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var storedHash string
-		if err := rows.Scan(&storedHash); err != nil {
-			continue
-		}
-
-		// Use bcrypt to compare the incoming token with stored hash
-		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(token)); err == nil {
-			// Found the matching token, delete it
-			_, err = Pool.Exec(context.Background(),
-				`DELETE FROM refresh_tokens WHERE token_hash = $1`,
-				storedHash)
-			if err != nil {
-				return fmt.Errorf("failed to delete refresh token: %w", err)
-			}
-			return nil
-		}
-	}
-
-	return nil // Token not found, but that's okay for logout
+	return nil // Token not found is not an error (idempotent logout)
 }
 
-func DeleteAllUserRefreshTokens(userID uuid.UUID) error {
-	_, err := Pool.Exec(context.Background(),
+func (s *Store) DeleteAllUserRefreshTokens(userID uuid.UUID) error {
+	_, err := s.pool.Exec(context.Background(),
 		`DELETE FROM refresh_tokens WHERE user_id = $1`,
 		userID)
 	if err != nil {
@@ -97,8 +71,8 @@ func DeleteAllUserRefreshTokens(userID uuid.UUID) error {
 	return nil
 }
 
-func CleanupExpiredRefreshTokens() error {
-	result, err := Pool.Exec(context.Background(),
+func (s *Store) CleanupExpiredRefreshTokens() error {
+	result, err := s.pool.Exec(context.Background(),
 		`DELETE FROM refresh_tokens WHERE expires_at < NOW()`)
 	if err != nil {
 		return fmt.Errorf("failed to cleanup expired tokens: %w", err)

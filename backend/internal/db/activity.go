@@ -42,7 +42,7 @@ type PaginatedActivities struct {
 	TotalPages int
 }
 
-func ListActivities(ctx context.Context, filters ActivityListFilters) (*PaginatedActivities, error) {
+func (s *Store) ListActivities(ctx context.Context, filters ActivityListFilters) (*PaginatedActivities, error) {
 	if filters.Page < 1 {
 		filters.Page = 1
 	}
@@ -78,7 +78,7 @@ func ListActivities(ctx context.Context, filters ActivityListFilters) (*Paginate
 	`, whereClause)
 
 	var total int
-	err := Pool.QueryRow(ctx, countQuery, args...).Scan(&total)
+	err := s.pool.QueryRow(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func ListActivities(ctx context.Context, filters ActivityListFilters) (*Paginate
 
 	args = append(args, filters.Limit, (filters.Page-1)*filters.Limit)
 
-	rows, err := Pool.Query(ctx, query, args...)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func ListActivities(ctx context.Context, filters ActivityListFilters) (*Paginate
 	}, nil
 }
 
-func ListActivitiesForPlan(ctx context.Context, planID string, page, limit int) (*PaginatedActivities, error) {
+func (s *Store) ListActivitiesForPlan(ctx context.Context, planID string, page, limit int) (*PaginatedActivities, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -143,7 +143,7 @@ func ListActivitiesForPlan(ctx context.Context, planID string, page, limit int) 
 	countQuery := `SELECT COUNT(*) FROM activity_log WHERE plan_id = $1`
 
 	var total int
-	err := Pool.QueryRow(ctx, countQuery, planID).Scan(&total)
+	err := s.pool.QueryRow(ctx, countQuery, planID).Scan(&total)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func ListActivitiesForPlan(ctx context.Context, planID string, page, limit int) 
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := Pool.Query(ctx, query, planID, limit, (page-1)*limit)
+	rows, err := s.pool.Query(ctx, query, planID, limit, (page-1)*limit)
 	if err != nil {
 		return nil, err
 	}

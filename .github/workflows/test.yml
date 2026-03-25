@@ -1,0 +1,45 @@
+name: Test
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: homeplanner_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Run unit tests (no DB required)
+        working-directory: backend
+        run: go test ./internal/processing/... -v
+
+      - name: Run integration tests
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/homeplanner_test?sslmode=disable
+          MIGRATIONS_PATH: file://migrations
+        run: go test ./internal/db/... -v

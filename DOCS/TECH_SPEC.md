@@ -373,7 +373,27 @@ PUBLIC_API_URL=http://localhost:8080
 
 ---
 
-## 13. Security
+## 13. Frontend Rendering Strategy
+
+### 13.1 Why adapter-static
+
+The SvelteKit frontend uses `adapter-static`, producing a fully pre-rendered SPA served as plain HTML/JS/CSS files embedded in the Go binary.
+
+**Why this was chosen:**
+
+- Internal tool only — no SEO requirements, no public crawlers
+- Zero-runtime server: the Go binary serves the SPA directly from the embedded filesystem, no separate Node.js process needed in production
+- Simpler deployment: one container, one binary
+
+**When to reconsider:**
+
+- Public-facing pages that need SEO or social-media link previews → switch to `adapter-node`
+- Server-side data fetching needed on initial load (e.g., faster perceived performance for large datasets) → switch to `adapter-node`
+- Any route that needs real-time SSR (e.g., public plan viewer pages with dynamic OG tags) → `adapter-node` or a hybrid approach
+
+---
+
+## 14. Security
 
 - Passwords hashed with bcrypt (cost factor 12)
 - JWT secrets minimum 256-bit random strings

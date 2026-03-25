@@ -82,17 +82,7 @@ export async function getPlans(params: ListPlansParams = {}): Promise<PaginatedR
 		}
 	});
 	const query = searchParams.toString();
-	// Use raw fetch to get full paginated response with meta
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/plans${query ? `?${query}` : ''}`, {
-		credentials: 'include'
-	});
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Failed to load plans');
-	}
-	const data = await response.json();
-	return data;
+	return api.getRaw<PaginatedResponse<Plan>>(`/plans${query ? `?${query}` : ''}`);
 }
 
 export async function getPlan(id: string): Promise<PlanWithFiles> {
@@ -147,17 +137,7 @@ export async function getActivities(
 		}
 	});
 	const query = searchParams.toString();
-	// Use raw fetch to get full paginated response with meta
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/activity${query ? `?${query}` : ''}`, {
-		credentials: 'include'
-	});
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Failed to load activities');
-	}
-	const data = await response.json();
-	return data;
+	return api.getRaw<PaginatedResponse<Activity>>(`/activity${query ? `?${query}` : ''}`);
 }
 
 export async function getPlanActivities(
@@ -165,17 +145,9 @@ export async function getPlanActivities(
 	page: number = 1,
 	limit: number = 50
 ): Promise<PaginatedResponse<Activity>> {
-	// Use raw fetch to get full paginated response with meta
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/plans/${planId}/activity?page=${page}&limit=${limit}`, {
-		credentials: 'include'
-	});
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Failed to load plan activities');
-	}
-	const data = await response.json();
-	return data;
+	return api.getRaw<PaginatedResponse<Activity>>(
+		`/plans/${planId}/activity?page=${page}&limit=${limit}`
+	);
 }
 
 export async function getPlanFiles(planId: string): Promise<{
@@ -204,21 +176,7 @@ export async function uploadWebsiteFile(
 	const formData = new FormData();
 	formData.append('file', file);
 	formData.append('slot', slot);
-
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/plans/${planId}/files/website`, {
-		method: 'POST',
-		credentials: 'include',
-		body: formData
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Upload failed');
-	}
-
-	const data = await response.json();
-	return data.data;
+	return api.postFormData<File>(`/plans/${planId}/files/website`, formData);
 }
 
 export async function uploadFiles(
@@ -231,21 +189,7 @@ export async function uploadFiles(
 		formData.append('files', file);
 	});
 	formData.append('category', category);
-
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/plans/${planId}/files`, {
-		method: 'POST',
-		credentials: 'include',
-		body: formData
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Upload failed');
-	}
-
-	const data = await response.json();
-	return data.data;
+	return api.postFormData<File[]>(`/plans/${planId}/files`, formData);
 }
 
 // Import API
@@ -278,21 +222,7 @@ export interface ImportResult {
 export async function previewCsvImport(file: globalThis.File): Promise<ImportPreview> {
 	const formData = new FormData();
 	formData.append('file', file);
-
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/import/csv/preview`, {
-		method: 'POST',
-		credentials: 'include',
-		body: formData
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Preview failed');
-	}
-
-	const data = await response.json();
-	return data.data;
+	return api.postFormData<ImportPreview>('/import/csv/preview', formData);
 }
 
 export async function importCsv(
@@ -306,21 +236,7 @@ export async function importCsv(
 	if (options.id_column) {
 		formData.append('id_column', options.id_column);
 	}
-
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/import/csv`, {
-		method: 'POST',
-		credentials: 'include',
-		body: formData
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Import failed');
-	}
-
-	const data = await response.json();
-	return data.data;
+	return api.postFormData<ImportResult>('/import/csv', formData);
 }
 
 // Export API
@@ -392,19 +308,8 @@ export async function exportData(options: ExportOptions): Promise<Blob> {
 		params.append('style', options.filters.style);
 	}
 
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 	const endpoint = options.type === 'csv' ? '/export/csv' : '/export/zip';
-	const response = await fetch(`${API_BASE}${endpoint}?${params.toString()}`, {
-		method: 'GET',
-		credentials: 'include'
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Export failed');
-	}
-
-	return response.blob();
+	return api.getBlob(`${endpoint}?${params.toString()}`);
 }
 
 // Bulk Image Upload API
@@ -438,19 +343,5 @@ export async function bulkUploadFiles(
 		formData.append('files', file);
 	});
 	formData.append('metadata', JSON.stringify(metadata));
-
-	const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-	const response = await fetch(`${API_BASE}/plans/bulk-files`, {
-		method: 'POST',
-		credentials: 'include',
-		body: formData
-	});
-
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error?.message || 'Bulk upload failed');
-	}
-
-	const data = await response.json();
-	return data.data;
+	return api.postFormData<BulkUploadResponse>('/plans/bulk-files', formData);
 }

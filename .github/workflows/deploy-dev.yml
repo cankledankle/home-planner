@@ -35,6 +35,11 @@ jobs:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
-          no-cache: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # Dokploy auto-deploys when it sees the new :dev image
+      - name: Trigger Dokploy deployment
+        if: success()
+        run: |
+          curl -sSf -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" || echo "Dokploy webhook failed (non-fatal)"

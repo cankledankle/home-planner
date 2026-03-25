@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SeedAdminUser() error {
+func (s *Store) SeedAdminUser() error {
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
 	adminName := os.Getenv("ADMIN_NAME")
@@ -18,7 +18,7 @@ func SeedAdminUser() error {
 	}
 
 	var count int
-	err := Pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM users").Scan(&count)
+	err := s.pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM users").Scan(&count)
 	if err != nil {
 		return fmt.Errorf("failed to check user count: %w", err)
 	}
@@ -32,7 +32,7 @@ func SeedAdminUser() error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	_, err = Pool.Exec(context.Background(),
+	_, err = s.pool.Exec(context.Background(),
 		`INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'admin')`,
 		adminName, adminEmail, string(hashedPassword))
 	if err != nil {
@@ -42,9 +42,9 @@ func SeedAdminUser() error {
 	return nil
 }
 
-func CheckAdminUserExists() (bool, error) {
+func (s *Store) CheckAdminUserExists() (bool, error) {
 	var count int
-	err := Pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&count)
+	err := s.pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("failed to check admin user: %w", err)
 	}

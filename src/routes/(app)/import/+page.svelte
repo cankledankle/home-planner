@@ -65,7 +65,16 @@
 		{ value: 'unfinished_sf', label: 'Unfinished SF' },
 		{ value: 'heated_sf', label: 'Heated SF' },
 		{ value: 'total_sf', label: 'Total SF' },
-		{ value: 'notes', label: 'Notes' }
+		{ value: 'notes', label: 'Notes' },
+		{ value: 'img_render_front', label: 'Image: Render Front' },
+		{ value: 'img_elevation_front', label: 'Image: Elevation Front' },
+		{ value: 'img_elevation_left', label: 'Image: Elevation Left' },
+		{ value: 'img_elevation_rear', label: 'Image: Elevation Rear' },
+		{ value: 'img_elevation_right', label: 'Image: Elevation Right' },
+		{ value: 'img_floor_plan_main', label: 'Image: Floor Plan Main' },
+		{ value: 'img_floor_plan_upper', label: 'Image: Floor Plan Upper' },
+		{ value: 'img_floor_plan_lower', label: 'Image: Floor Plan Lower' },
+		{ value: 'img_poster', label: 'Image: Poster' }
 	];
 
 	function handleFileSelect(event: Event) {
@@ -435,7 +444,7 @@
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'create'
-								? 'border-blue-500 bg-blue-50'
+								? 'border-blue-500 bg-blue-500/10'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="create" class="h-4 w-4" />
@@ -447,7 +456,7 @@
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'update'
-								? 'border-blue-500 bg-blue-50'
+								? 'border-blue-500 bg-blue-500/10'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="update" class="h-4 w-4" />
@@ -459,7 +468,7 @@
 						<label
 							class="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 transition-colors hover:bg-muted {importMode ===
 							'upsert'
-								? 'border-blue-500 bg-blue-50'
+								? 'border-blue-500 bg-blue-500/10'
 								: ''}"
 						>
 							<input type="radio" bind:group={importMode} value="upsert" class="h-4 w-4" />
@@ -504,7 +513,7 @@
 										{/each}
 									</select>
 									{#if columnMapping[column] === 'name'}
-										<span class="flex-shrink-0 rounded-full bg-green-100 p-1">
+										<span class="flex-shrink-0 rounded-full bg-green-500/20 p-1">
 											<Check class="h-4 w-4 text-green-600" />
 										</span>
 									{/if}
@@ -562,14 +571,14 @@
 						</div>
 					</div>
 
-					<div class="rounded-lg bg-blue-50 p-4">
-						<h3 class="mb-2 font-medium text-blue-900">Preview (First 3 Rows)</h3>
+					<div class="rounded-lg bg-muted p-4">
+						<h3 class="mb-2 font-medium text-card-foreground">Preview (First 3 Rows)</h3>
 						<div class="overflow-x-auto">
 							<table class="min-w-full text-sm">
 								<thead>
-									<tr class="border-b border-blue-200">
+									<tr class="border-b border-border">
 										{#each Object.values(columnMapping).filter(Boolean) as field}
-											<th class="px-2 py-1 text-left font-medium text-blue-700">
+											<th class="px-2 py-1 text-left font-medium text-foreground">
 												{planFields.find((f) => f.value === field)?.label ?? field}
 											</th>
 										{/each}
@@ -577,10 +586,10 @@
 								</thead>
 								<tbody>
 									{#each preview?.preview.slice(0, 3) ?? [] as row}
-										<tr class="border-b border-blue-100 last:border-0">
+										<tr class="border-b border-border last:border-0">
 											{#each Object.entries(columnMapping) as [csvCol, planField]}
 												{#if planField}
-													<td class="px-2 py-1 text-blue-900">{row[csvCol] ?? ''}</td>
+													<td class="px-2 py-1 text-foreground">{row[csvCol] ?? ''}</td>
 												{/if}
 											{/each}
 										</tr>
@@ -613,13 +622,13 @@
 				{#if importResult}
 					{#if importResult.errors.length === 0}
 						<div
-							class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100"
+							class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20"
 						>
 							<CheckCircle2 class="h-10 w-10 text-green-600" />
 						</div>
 					{:else}
 						<div
-							class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100"
+							class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/20"
 						>
 							<AlertCircle class="h-10 w-10 text-amber-600" />
 						</div>
@@ -628,19 +637,19 @@
 					<h2 class="text-xl font-semibold text-card-foreground">Import Complete</h2>
 
 					<div class="grid grid-cols-2 gap-4">
-						<div class="rounded-lg bg-green-50 p-4">
+						<div class="rounded-lg bg-green-500/10 p-4">
 							<p class="text-sm text-green-600">Created</p>
-							<p class="text-2xl font-bold text-green-700">{importResult.imported}</p>
+							<p class="text-2xl font-bold text-green-600">{importResult.imported}</p>
 						</div>
-						<div class="rounded-lg bg-blue-50 p-4">
+						<div class="rounded-lg bg-blue-500/10 p-4">
 							<p class="text-sm text-blue-600">Updated</p>
-							<p class="text-2xl font-bold text-blue-700">{importResult.updated}</p>
+							<p class="text-2xl font-bold text-blue-600">{importResult.updated}</p>
 						</div>
 					</div>
 
 					{#if importResult.errors.length > 0}
-						<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-left">
-							<h3 class="mb-2 font-medium text-red-900">Errors ({importResult.errors.length})</h3>
+						<div class="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-left">
+							<h3 class="mb-2 font-medium text-red-600">Errors ({importResult.errors.length})</h3>
 							<div class="max-h-48 space-y-1 overflow-y-auto text-sm">
 								{#each importResult.errors as error}
 									<div class="flex items-center gap-2 text-red-700">

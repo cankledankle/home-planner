@@ -462,7 +462,7 @@
 
 <div class="space-y-6">
 	<!-- Category Tabs -->
-	<div class="border-b border-slate-200">
+	<div class="border-b border-border">
 		<nav class="flex gap-1">
 			{#each Object.entries(categoryLabels) as [category, label]}
 				{@const IconComponent = getCategoryIcon(category as Category)}
@@ -470,12 +470,12 @@
 					class="border-b-2 px-4 py-3 text-sm font-medium transition-colors {activeCategory ===
 					category
 						? 'border-blue-600 text-blue-600'
-						: 'border-transparent text-slate-600 hover:text-slate-900'}"
+						: 'border-transparent text-muted-foreground hover:text-card-foreground'}"
 					onclick={() => (activeCategory = category as Category)}
 				>
 					<IconComponent class="mr-2 inline h-4 w-4" />
 					{label}
-					<span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+					<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 						{files[category as Category]?.length || 0}
 					</span>
 				</button>
@@ -486,9 +486,9 @@
 	<!-- Upload Zone -->
 	{#if activeCategory === 'website'}
 		<!-- Website Slots Grid -->
-		<div class="rounded-lg border border-slate-200 bg-white p-4">
+		<div class="rounded-lg border border-border bg-card p-4">
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="text-sm font-medium text-slate-700">Website Image Slots</h3>
+				<h3 class="text-sm font-medium text-foreground">Website Image Slots</h3>
 				<Button size="sm" onclick={openBulkUpload}>
 					<Upload class="mr-2 h-4 w-4" />
 					Bulk Upload to Slots
@@ -499,7 +499,7 @@
 					{@const file = websiteSlotFiles[slot.key]}
 					{@const imageUrl = slotImageUrls[slot.key]}
 					<div
-						class="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+						class="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted"
 					>
 						{#if file && imageUrl}
 							<img src={imageUrl} alt={slot.label} class="h-full w-full object-cover" />
@@ -510,8 +510,8 @@
 							</div>
 						{:else}
 							<div class="flex h-full flex-col items-center justify-center p-2 text-center">
-								<Image class="h-8 w-8 text-slate-300" />
-								<span class="mt-1 text-[10px] text-slate-400">{slot.label}</span>
+								<Image class="h-8 w-8 text-muted-foreground" />
+								<span class="mt-1 text-[10px] text-muted-foreground">{slot.label}</span>
 							</div>
 						{/if}
 					</div>
@@ -522,8 +522,8 @@
 		<!-- Upload Area -->
 		<div
 			class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragging
-				? 'border-blue-500 bg-blue-50'
-				: 'border-slate-300 hover:border-slate-400'}"
+				? 'border-blue-500 bg-blue-500/10'
+				: 'border-input hover:border-slate-400'}"
 			role="button"
 			tabindex="0"
 			aria-label="Upload files drop zone"
@@ -534,16 +534,16 @@
 			{#if uploading}
 				<div class="flex flex-col items-center gap-3">
 					<Loader2 class="h-8 w-8 animate-spin text-blue-600" />
-					<p class="text-sm font-medium text-slate-700">Uploading files...</p>
+					<p class="text-sm font-medium text-foreground">Uploading files...</p>
 				</div>
 			{:else}
 				<div class="flex flex-col items-center gap-3">
-					<div class="rounded-full bg-blue-100 p-3">
+					<div class="rounded-full bg-blue-500/20 p-3">
 						<Upload class="h-6 w-6 text-blue-600" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-slate-700">Drop files here or click to upload</p>
-						<div class="mt-1 space-y-0.5 text-xs text-slate-500">
+						<p class="text-sm font-medium text-foreground">Drop files here or click to upload</p>
+						<div class="mt-1 space-y-0.5 text-xs text-muted-foreground">
 							<p>Max size: 50MB • Images will be optimized (max 4000px, JPEG 90%)</p>
 							<p class="text-amber-600">PNG files with transparency will be stored as "Other"</p>
 						</div>
@@ -558,8 +558,8 @@
 	{:else}
 		<div
 			class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragging
-				? 'border-blue-500 bg-blue-50'
-				: 'border-slate-300 hover:border-slate-400'}"
+				? 'border-blue-500 bg-blue-500/10'
+				: 'border-input hover:border-slate-400'}"
 			role="button"
 			tabindex="0"
 			aria-label="Upload files drop zone"
@@ -570,16 +570,16 @@
 			{#if uploading}
 				<div class="flex flex-col items-center gap-3">
 					<Loader2 class="h-8 w-8 animate-spin text-blue-600" />
-					<p class="text-sm font-medium text-slate-700">Uploading files...</p>
+					<p class="text-sm font-medium text-foreground">Uploading files...</p>
 				</div>
 			{:else}
 				<div class="flex flex-col items-center gap-3">
-					<div class="rounded-full bg-blue-100 p-3">
+					<div class="rounded-full bg-blue-500/20 p-3">
 						<Upload class="h-6 w-6 text-blue-600" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-slate-700">Drop files here or click to upload</p>
-						<p class="mt-1 text-xs text-slate-500">Maximum file size: 50MB</p>
+						<p class="text-sm font-medium text-foreground">Drop files here or click to upload</p>
+						<p class="mt-1 text-xs text-muted-foreground">Maximum file size: 50MB</p>
 					</div>
 					<Button variant="outline" onclick={() => document.getElementById('file-upload')?.click()}>
 						Select Files
@@ -591,18 +591,18 @@
 	{/if}
 
 	<!-- File List -->
-	<div class="rounded-lg border border-slate-200 bg-white">
+	<div class="rounded-lg border border-border bg-card">
 		{#if loading}
 			<div class="p-8 text-center">
-				<Loader2 class="mx-auto h-8 w-8 animate-spin text-slate-400" />
-				<p class="mt-2 text-sm text-slate-500">Loading files...</p>
+				<Loader2 class="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+				<p class="mt-2 text-sm text-muted-foreground">Loading files...</p>
 			</div>
 		{:else if currentFiles.length === 0}
 			{@const EmptyIcon = getCategoryIcon(activeCategory)}
 			<div class="p-8 text-center">
-				<EmptyIcon class="mx-auto mb-4 h-12 w-12 text-slate-300" />
-				<h3 class="mb-2 text-lg font-medium text-slate-900">No files yet</h3>
-				<p class="text-slate-600">
+				<EmptyIcon class="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+				<h3 class="mb-2 text-lg font-medium text-card-foreground">No files yet</h3>
+				<p class="text-muted-foreground">
 					Upload {categoryLabels[activeCategory].toLowerCase()} to get started
 				</p>
 			</div>
@@ -610,17 +610,17 @@
 			<div class="divide-y divide-slate-100">
 				{#each currentFiles as file}
 					{@const FileIcon = getCategoryIcon(activeCategory)}
-					<div class="flex items-center gap-4 p-4 hover:bg-slate-50">
+					<div class="flex items-center gap-4 p-4 hover:bg-muted/50">
 						<div
-							class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100"
+							class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-muted"
 						>
-							<FileIcon class="h-5 w-5 text-slate-600" />
+							<FileIcon class="h-5 w-5 text-muted-foreground" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<p class="truncate font-medium text-slate-900">
+							<p class="truncate font-medium text-card-foreground">
 								{file.filename}
 							</p>
-							<p class="text-xs text-slate-500">
+							<p class="text-xs text-muted-foreground">
 								{formatFileSize(file.size_bytes)} • Uploaded {formatDate(file.uploaded_at)}
 							</p>
 						</div>
@@ -663,8 +663,8 @@
 		<!-- File Drop Zone for Bulk Upload -->
 		<div
 			class="rounded-lg border-2 border-dashed p-6 text-center transition-colors {isDragging
-				? 'border-blue-500 bg-blue-50'
-				: 'border-slate-300 hover:border-slate-400'}"
+				? 'border-blue-500 bg-blue-500/10'
+				: 'border-input hover:border-slate-400'}"
 			role="button"
 			tabindex="0"
 			aria-label="Bulk upload drop zone"
@@ -673,11 +673,11 @@
 			ondragleave={handleDragLeave}
 		>
 			<div class="flex flex-col items-center gap-2">
-				<div class="rounded-full bg-blue-100 p-2">
+				<div class="rounded-full bg-blue-500/20 p-2">
 					<Upload class="h-5 w-5 text-blue-600" />
 				</div>
-				<p class="text-sm font-medium text-slate-700">Drop files here or click to select</p>
-				<div class="space-y-0.5 text-center text-xs text-slate-500">
+				<p class="text-sm font-medium text-foreground">Drop files here or click to select</p>
+				<div class="space-y-0.5 text-center text-xs text-muted-foreground">
 					<p>Max 5MB per image • Will be resized to max 4000px • JPEG output</p>
 					<p class="text-amber-600">PNG with transparency → stored as "Other"</p>
 				</div>
@@ -702,30 +702,36 @@
 		<!-- Selected Files with Slot Assignment -->
 		{#if selectedFiles.length > 0}
 			<div class="mt-6 space-y-3">
-				<h4 class="text-sm font-medium text-slate-700">
+				<h4 class="text-sm font-medium text-foreground">
 					Selected Files ({selectedFiles.length})
 				</h4>
 				<div class="max-h-[50vh] space-y-2 overflow-y-auto pr-2">
 					{#each selectedFiles as selectedFile (selectedFile.id)}
 						{@const StatusIcon = getStatusIcon(selectedFile.status)}
 						<div
-							class="flex items-center gap-3 overflow-hidden rounded-lg border border-slate-200 p-3 {selectedFile.status ===
+							class="flex items-center gap-3 overflow-hidden rounded-lg border border-border p-3 {selectedFile.status ===
 							'error'
-								? 'border-red-200 bg-red-50'
-								: ''} {selectedFile.status === 'complete' ? 'border-green-200 bg-green-50' : ''}"
+								? 'border-red-500/30 bg-red-500/10'
+								: ''} {selectedFile.status === 'complete'
+								? 'border-green-500/30 bg-green-500/10'
+								: ''}"
 						>
 							<div
-								class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100"
+								class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-muted"
 							>
 								{#if selectedFile.status === 'uploading'}
 									<Loader2 class="h-6 w-6 animate-spin text-blue-500" />
 								{:else}
-									<Image class="h-6 w-6 text-slate-400" />
+									<Image class="h-6 w-6 text-muted-foreground" />
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1 overflow-hidden">
-								<p class="truncate text-sm font-medium text-slate-900">{selectedFile.file.name}</p>
-								<p class="text-xs text-slate-500">{formatFileSize(selectedFile.file.size)}</p>
+								<p class="truncate text-sm font-medium text-card-foreground">
+									{selectedFile.file.name}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{formatFileSize(selectedFile.file.size)}
+								</p>
 								{#if selectedFile.status === 'error' && selectedFile.errorMessage}
 									<p class="mt-1 text-xs text-red-600">{selectedFile.errorMessage}</p>
 								{/if}
@@ -737,7 +743,7 @@
 										assignSlot(selectedFile.id, (e.target as HTMLSelectElement).value)}
 									disabled={selectedFile.status === 'uploading' ||
 										selectedFile.status === 'complete'}
-									class="w-[140px] rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+									class="w-[140px] rounded-md border border-input bg-card px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:bg-muted disabled:text-muted-foreground"
 								>
 									<option value="">Select slot...</option>
 									{#each getAvailableSlots(selectedFile.id) as slotOption}
@@ -774,7 +780,7 @@
 			<div class="mt-6">
 				<div class="flex items-center gap-2">
 					<Loader2 class="h-4 w-4 animate-spin text-blue-600" />
-					<p class="text-sm text-slate-600">Uploading files...</p>
+					<p class="text-sm text-muted-foreground">Uploading files...</p>
 				</div>
 			</div>
 		{/if}
@@ -824,13 +830,15 @@
 
 		<div class="mt-4 space-y-2">
 			{#each slotsToOverwrite as { slot, label, existingFile }}
-				<div class="flex items-center gap-3 rounded-md bg-amber-50 p-3 text-sm">
-					<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-amber-100">
+				<div class="flex items-center gap-3 rounded-md bg-amber-500/10 p-3 text-sm">
+					<div
+						class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-amber-500/20"
+					>
 						<Image class="h-4 w-4 text-amber-600" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<p class="truncate font-medium text-amber-900">{label}</p>
-						<p class="truncate text-xs text-amber-700">Current: {existingFile.filename}</p>
+						<p class="truncate font-medium text-amber-600">{label}</p>
+						<p class="truncate text-xs text-amber-600">Current: {existingFile.filename}</p>
 					</div>
 				</div>
 			{/each}

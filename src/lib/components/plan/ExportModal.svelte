@@ -244,23 +244,31 @@
 		<div class="space-y-6 py-4">
 			<!-- Export Type Selection -->
 			<div>
-				<span class="mb-3 block text-sm font-medium text-slate-700">Export Type</span>
+				<span class="mb-3 block text-sm font-medium text-foreground">Export Type</span>
 				<div class="grid grid-cols-2 gap-3">
 					<button
 						class="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors {exportType ===
 						'csv'
-							? 'border-emerald-500 bg-emerald-50'
-							: 'border-slate-200 hover:border-slate-300'}"
+							? 'border-emerald-500 bg-emerald-500/10'
+							: 'border-border hover:border-muted-foreground'}"
 						onclick={() => (exportType = 'csv')}
 					>
 						<FileSpreadsheet
-							class="h-5 w-5 {exportType === 'csv' ? 'text-emerald-600' : 'text-slate-400'}"
+							class="h-5 w-5 {exportType === 'csv' ? 'text-emerald-600' : 'text-muted-foreground'}"
 						/>
 						<div>
-							<p class="font-medium {exportType === 'csv' ? 'text-emerald-900' : 'text-slate-700'}">
+							<p
+								class="font-medium {exportType === 'csv'
+									? 'text-card-foreground'
+									: 'text-foreground'}"
+							>
 								CSV Export
 							</p>
-							<p class="text-xs {exportType === 'csv' ? 'text-emerald-700' : 'text-slate-500'}">
+							<p
+								class="text-xs {exportType === 'csv'
+									? 'text-emerald-600'
+									: 'text-muted-foreground'}"
+							>
 								Spreadsheet with plan data
 							</p>
 						</div>
@@ -268,16 +276,22 @@
 					<button
 						class="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors {exportType ===
 						'zip'
-							? 'border-blue-500 bg-blue-50'
-							: 'border-slate-200 hover:border-slate-300'}"
+							? 'border-blue-500 bg-blue-500/10'
+							: 'border-border hover:border-muted-foreground'}"
 						onclick={() => (exportType = 'zip')}
 					>
-						<Archive class="h-5 w-5 {exportType === 'zip' ? 'text-blue-600' : 'text-slate-400'}" />
+						<Archive
+							class="h-5 w-5 {exportType === 'zip' ? 'text-blue-600' : 'text-muted-foreground'}"
+						/>
 						<div>
-							<p class="font-medium {exportType === 'zip' ? 'text-blue-900' : 'text-slate-700'}">
+							<p
+								class="font-medium {exportType === 'zip'
+									? 'text-card-foreground'
+									: 'text-foreground'}"
+							>
 								ZIP Export
 							</p>
-							<p class="text-xs {exportType === 'zip' ? 'text-blue-700' : 'text-slate-500'}">
+							<p class="text-xs {exportType === 'zip' ? 'text-blue-600' : 'text-muted-foreground'}">
 								Download all files
 							</p>
 						</div>
@@ -287,21 +301,29 @@
 
 			<!-- Scope Selection -->
 			<div>
-				<span class="mb-3 block text-sm font-medium text-slate-700">Export Scope</span>
+				<span class="mb-3 block text-sm font-medium text-foreground">Export Scope</span>
 				<div class="space-y-2">
 					<button
 						class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors {exportScope ===
 						'all'
-							? 'border-blue-500 bg-blue-50'
-							: 'border-slate-200 hover:border-slate-300'}"
+							? 'border-blue-500 bg-blue-500/10'
+							: 'border-border hover:border-muted-foreground'}"
 						onclick={() => (exportScope = 'all')}
 					>
-						<Layers class="h-4 w-4 {exportScope === 'all' ? 'text-blue-600' : 'text-slate-400'}" />
+						<Layers
+							class="h-4 w-4 {exportScope === 'all' ? 'text-blue-600' : 'text-muted-foreground'}"
+						/>
 						<div class="flex-1">
-							<p class="font-medium {exportScope === 'all' ? 'text-blue-900' : 'text-slate-700'}">
+							<p
+								class="font-medium {exportScope === 'all'
+									? 'text-card-foreground'
+									: 'text-foreground'}"
+							>
 								All Plans
 							</p>
-							<p class="text-xs {exportScope === 'all' ? 'text-blue-700' : 'text-slate-500'}">
+							<p
+								class="text-xs {exportScope === 'all' ? 'text-blue-600' : 'text-muted-foreground'}"
+							>
 								Export your entire collection
 							</p>
 						</div>
@@ -314,23 +336,27 @@
 						<button
 							class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors {exportScope ===
 							'selected'
-								? 'border-blue-500 bg-blue-50'
-								: 'border-slate-200 hover:border-slate-300'}"
+								? 'border-blue-500 bg-blue-500/10'
+								: 'border-border hover:border-muted-foreground'}"
 							onclick={() => (exportScope = 'selected')}
 						>
 							<List
-								class="h-4 w-4 {exportScope === 'selected' ? 'text-blue-600' : 'text-slate-400'}"
+								class="h-4 w-4 {exportScope === 'selected'
+									? 'text-blue-600'
+									: 'text-muted-foreground'}"
 							/>
 							<div class="flex-1">
 								<p
 									class="font-medium {exportScope === 'selected'
-										? 'text-blue-900'
-										: 'text-slate-700'}"
+										? 'text-card-foreground'
+										: 'text-foreground'}"
 								>
 									Selected Plans ({selectedPlanIds.length})
 								</p>
 								<p
-									class="text-xs {exportScope === 'selected' ? 'text-blue-700' : 'text-slate-500'}"
+									class="text-xs {exportScope === 'selected'
+										? 'text-blue-600'
+										: 'text-muted-foreground'}"
 								>
 									Only currently selected plans
 								</p>
@@ -345,23 +371,27 @@
 						<button
 							class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors {exportScope ===
 							'filtered'
-								? 'border-blue-500 bg-blue-50'
-								: 'border-slate-200 hover:border-slate-300'}"
+								? 'border-blue-500 bg-blue-500/10'
+								: 'border-border hover:border-muted-foreground'}"
 							onclick={() => (exportScope = 'filtered')}
 						>
 							<Filter
-								class="h-4 w-4 {exportScope === 'filtered' ? 'text-blue-600' : 'text-slate-400'}"
+								class="h-4 w-4 {exportScope === 'filtered'
+									? 'text-blue-600'
+									: 'text-muted-foreground'}"
 							/>
 							<div class="flex-1">
 								<p
 									class="font-medium {exportScope === 'filtered'
-										? 'text-blue-900'
-										: 'text-slate-700'}"
+										? 'text-card-foreground'
+										: 'text-foreground'}"
 								>
 									Filtered Results
 								</p>
 								<p
-									class="text-xs {exportScope === 'filtered' ? 'text-blue-700' : 'text-slate-500'}"
+									class="text-xs {exportScope === 'filtered'
+										? 'text-blue-600'
+										: 'text-muted-foreground'}"
 								>
 									Current filter and search results
 								</p>
@@ -377,28 +407,28 @@
 			{#if exportType === 'csv'}
 				<!-- CSV Presets -->
 				<div>
-					<span class="mb-3 block text-sm font-medium text-slate-700">Export Preset</span>
+					<span class="mb-3 block text-sm font-medium text-foreground">Export Preset</span>
 					<div class="space-y-2">
 						{#each exportPresets as preset}
 							<button
 								class="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors {exportPreset ===
 								preset.id
-									? 'border-emerald-500 bg-emerald-50'
-									: 'border-slate-200 hover:border-slate-300'}"
+									? 'border-emerald-500 bg-emerald-500/10'
+									: 'border-border hover:border-muted-foreground'}"
 								onclick={() => handlePresetChange(preset.id)}
 							>
 								<div class="flex-1">
 									<p
 										class="font-medium {exportPreset === preset.id
-											? 'text-emerald-900'
-											: 'text-slate-700'}"
+											? 'text-card-foreground'
+											: 'text-foreground'}"
 									>
 										{preset.name}
 									</p>
 									<p
 										class="text-xs {exportPreset === preset.id
-											? 'text-emerald-700'
-											: 'text-slate-500'}"
+											? 'text-emerald-600'
+											: 'text-muted-foreground'}"
 									>
 										{preset.description} • {preset.fields.length} fields
 									</p>
@@ -411,22 +441,22 @@
 						<button
 							class="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors {exportPreset ===
 							'custom'
-								? 'border-emerald-500 bg-emerald-50'
-								: 'border-slate-200 hover:border-slate-300'}"
+								? 'border-emerald-500 bg-emerald-500/10'
+								: 'border-border hover:border-muted-foreground'}"
 							onclick={() => handlePresetChange('custom')}
 						>
 							<div class="flex-1">
 								<p
 									class="font-medium {exportPreset === 'custom'
-										? 'text-emerald-900'
-										: 'text-slate-700'}"
+										? 'text-card-foreground'
+										: 'text-foreground'}"
 								>
 									Custom
 								</p>
 								<p
 									class="text-xs {exportPreset === 'custom'
-										? 'text-emerald-700'
-										: 'text-slate-500'}"
+										? 'text-emerald-600'
+										: 'text-muted-foreground'}"
 								>
 									Select your own fields • {selectedFields.length} selected
 								</p>
@@ -441,19 +471,17 @@
 				<!-- Custom Field Selection -->
 				{#if exportPreset === 'custom'}
 					<div>
-<span class="mb-3 block text-sm font-medium text-slate-700">
-						Select Fields ({selectedFields.length} selected)
-					</span>
-						<div
-							class="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 p-3 sm:grid-cols-3"
-						>
+						<span class="mb-3 block text-sm font-medium text-foreground">
+							Select Fields ({selectedFields.length} selected)
+						</span>
+						<div class="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-3">
 							{#each allFields as field}
 								<label class="flex cursor-pointer items-center gap-2">
 									<Checkbox
 										checked={selectedFields.includes(field.name)}
 										onCheckedChange={() => toggleField(field.name)}
 									/>
-									<span class="text-sm text-slate-700">{field.label}</span>
+									<span class="text-sm text-foreground">{field.label}</span>
 								</label>
 							{/each}
 						</div>
@@ -464,13 +492,13 @@
 			{#if exportType === 'zip'}
 				<!-- ZIP Category Selection -->
 				<div>
-					<span class="mb-3 block text-sm font-medium text-slate-700">
+					<span class="mb-3 block text-sm font-medium text-foreground">
 						File Categories ({selectedCategories.length} selected)
 					</span>
 					<div class="space-y-2">
 						{#each categories as category}
 							<label
-								class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50"
+								class="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-slate-50"
 							>
 								<Checkbox
 									checked={selectedCategories.includes(category.id)}
@@ -478,8 +506,8 @@
 									class="mt-0.5"
 								/>
 								<div class="flex-1">
-									<p class="font-medium text-slate-700">{category.label}</p>
-									<p class="text-xs text-slate-500">{category.description}</p>
+									<p class="font-medium text-foreground">{category.label}</p>
+									<p class="text-xs text-muted-foreground">{category.description}</p>
 								</div>
 							</label>
 						{/each}

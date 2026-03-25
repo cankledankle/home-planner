@@ -343,8 +343,8 @@
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h2 class="text-xl font-semibold text-slate-900">Upload Images</h2>
-			<p class="text-sm text-slate-600">
+			<h2 class="text-xl font-semibold text-card-foreground">Upload Images</h2>
+			<p class="text-sm text-muted-foreground">
 				Assign images to the {plans.length} imported plans
 			</p>
 		</div>
@@ -358,18 +358,18 @@
 
 	<!-- Help Panel -->
 	{#if showHelp}
-		<div class="rounded-lg bg-blue-50 p-4 text-sm">
-			<h4 class="mb-2 font-medium text-blue-900">Smart Filename Matching</h4>
-			<p class="mb-2 text-blue-700">
+		<div class="rounded-lg bg-muted p-4 text-sm">
+			<h4 class="mb-2 font-medium text-card-foreground">Smart Filename Matching</h4>
+			<p class="mb-2 text-muted-foreground">
 				Files are automatically matched to plans and slots based on filename patterns:
 			</p>
-			<ul class="list-inside list-disc space-y-1 text-blue-700">
+			<ul class="list-inside list-disc space-y-1 text-muted-foreground">
 				<li><code>plan-slug--render-front.jpg</code> → Render Front slot</li>
 				<li><code>plan-slug--elevation-front.jpg</code> → Elevation Front slot</li>
 				<li><code>plan-slug--floor-plan-main.jpg</code> → Floor Plan Main slot</li>
 				<li><code>plan-slug--poster.jpg</code> → Poster slot</li>
 			</ul>
-			<p class="mt-2 text-blue-700">
+			<p class="mt-2 text-muted-foreground">
 				Use <strong>--</strong> (double dash) to separate plan name from slot type.
 			</p>
 		</div>
@@ -379,8 +379,8 @@
 	{#if !isUploading}
 		<div
 			class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {isDragging
-				? 'border-blue-500 bg-blue-50'
-				: 'border-slate-300 hover:border-slate-400'}"
+				? 'border-blue-500 bg-blue-500/10'
+				: 'border-input hover:border-muted-foreground'}"
 			ondrop={handleDrop}
 			ondragover={handleDragOver}
 			ondragleave={handleDragLeave}
@@ -388,12 +388,12 @@
 			tabindex="0"
 		>
 			<div class="flex flex-col items-center gap-3">
-				<div class="rounded-full bg-blue-100 p-3">
+				<div class="rounded-full bg-blue-500/20 p-3">
 					<Upload class="h-6 w-6 text-blue-600" />
 				</div>
 				<div>
-					<p class="font-medium text-slate-900">Drop image files here</p>
-					<p class="text-sm text-slate-500">or click to browse</p>
+					<p class="font-medium text-card-foreground">Drop image files here</p>
+					<p class="text-sm text-muted-foreground">or click to browse</p>
 				</div>
 				<Button
 					variant="outline"
@@ -415,13 +415,13 @@
 
 	<!-- Batch Assignment Bar -->
 	{#if selectedFileIds.length > 0 && !isUploading}
-		<div class="flex items-center gap-4 rounded-lg bg-slate-50 p-4">
-			<span class="text-sm font-medium text-slate-700">
+		<div class="flex items-center gap-4 rounded-lg bg-muted p-4">
+			<span class="text-sm font-medium text-foreground">
 				{selectedFileIds.length} file{selectedFileIds.length > 1 ? 's' : ''} selected
 			</span>
 			<select
 				bind:value={batchSlot}
-				class="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+				class="rounded-md border border-input px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 			>
 				<option value="">Select slot...</option>
 				{#each slots as slot}
@@ -437,7 +437,7 @@
 	{#if uploadedFiles.length > 0}
 		<div class="space-y-3">
 			<div class="flex items-center justify-between">
-				<h3 class="font-medium text-slate-900">
+				<h3 class="font-medium text-card-foreground">
 					Files ({readyCount}/{totalCount} ready)
 				</h3>
 				{#if !isUploading}
@@ -451,11 +451,11 @@
 			<div class="max-h-96 space-y-2 overflow-y-auto">
 				{#each uploadedFiles as fileData (fileData.id)}
 					<div
-						class="flex items-center gap-3 rounded-lg border border-slate-200 p-3 {fileData.status ===
+						class="flex items-center gap-3 rounded-lg border border-border p-3 {fileData.status ===
 						'success'
-							? 'border-green-200 bg-green-50'
+							? 'border-green-500/30 bg-green-500/10'
 							: fileData.status === 'error'
-								? 'border-red-200 bg-red-50'
+								? 'border-red-500/30 bg-red-500/10'
 								: ''}"
 					>
 						<!-- Selection checkbox -->
@@ -464,7 +464,7 @@
 								type="checkbox"
 								checked={selectedFileIds.includes(fileData.id)}
 								onchange={() => toggleFileSelection(fileData.id)}
-								class="h-4 w-4 rounded border-slate-300"
+								class="h-4 w-4 rounded border-input"
 							/>
 						{/if}
 
@@ -477,14 +477,14 @@
 							{:else if fileData.status === 'error'}
 								<AlertCircle class="h-5 w-5 text-red-600" />
 							{:else}
-								<FileImage class="h-5 w-5 text-slate-400" />
+								<FileImage class="h-5 w-5 text-muted-foreground" />
 							{/if}
 						</div>
 
 						<!-- File info -->
 						<div class="min-w-0 flex-1">
-							<p class="truncate font-medium text-slate-900">{fileData.file.name}</p>
-							<p class="text-xs text-slate-500">
+							<p class="truncate font-medium text-card-foreground">{fileData.file.name}</p>
+							<p class="text-xs text-muted-foreground">
 								{formatFileSize(fileData.file.size)}
 								{#if fileData.confidence > 0}
 									<span
@@ -492,14 +492,14 @@
 											? 'text-green-600'
 											: fileData.confidence >= 50
 												? 'text-amber-600'
-												: 'text-slate-400'}"
+												: 'text-muted-foreground'}"
 									>
 										{fileData.confidence}% match
 									</span>
 								{/if}
 							</p>
 							{#if fileData.message}
-								<p class="mt-1 text-xs text-slate-500">{fileData.message}</p>
+								<p class="mt-1 text-xs text-muted-foreground">{fileData.message}</p>
 							{/if}
 						</div>
 
@@ -508,7 +508,7 @@
 							<select
 								value={fileData.matchedPlan?.id ?? ''}
 								onchange={(e) => assignPlan(fileData.id, (e.target as HTMLSelectElement).value)}
-								class="w-40 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+								class="w-40 rounded-md border border-input px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
 							>
 								<option value="">Select plan...</option>
 								{#each plans as plan}
@@ -516,7 +516,7 @@
 								{/each}
 							</select>
 						{:else if fileData.matchedPlan}
-							<span class="text-sm text-slate-600">{fileData.matchedPlan.name}</span>
+							<span class="text-sm text-muted-foreground">{fileData.matchedPlan.name}</span>
 						{/if}
 
 						<!-- Slot assignment -->
@@ -524,9 +524,9 @@
 							<select
 								value={fileData.assignedSlot ?? ''}
 								onchange={(e) => assignSlot(fileData.id, (e.target as HTMLSelectElement).value)}
-								class="w-44 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 {fileData.suggestedSlot &&
+								class="w-44 rounded-md border border-input px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 {fileData.suggestedSlot &&
 								!fileData.assignedSlot
-									? 'border-amber-400 bg-amber-50'
+									? 'border-amber-500/50 bg-amber-500/10'
 									: ''}"
 							>
 								<option value="">Select slot...</option>
@@ -535,7 +535,7 @@
 								{/each}
 							</select>
 						{:else if fileData.assignedSlot}
-							<span class="text-sm text-slate-600">
+							<span class="text-sm text-muted-foreground">
 								{slots.find((s) => s.value === fileData.assignedSlot)?.icon}
 								{slots.find((s) => s.value === fileData.assignedSlot)?.label}
 							</span>
@@ -545,7 +545,7 @@
 						{#if !isUploading && fileData.status !== 'uploading'}
 							<button
 								onclick={() => removeFile(fileData.id)}
-								class="text-slate-400 hover:text-red-600"
+								class="text-muted-foreground hover:text-red-600"
 							>
 								<X class="h-4 w-4" />
 							</button>
@@ -560,10 +560,10 @@
 	{#if isUploading}
 		<div class="space-y-2">
 			<div class="flex justify-between text-sm">
-				<span class="text-slate-600">Uploading...</span>
+				<span class="text-muted-foreground">Uploading...</span>
 				<span class="font-medium">{uploadProgress}%</span>
 			</div>
-			<div class="h-2 rounded-full bg-slate-200">
+			<div class="h-2 rounded-full bg-muted">
 				<div
 					class="h-2 rounded-full bg-blue-600 transition-all"
 					style="width: {uploadProgress}%"
@@ -574,9 +574,9 @@
 
 	<!-- Summary -->
 	{#if successCount > 0 && !isUploading}
-		<div class="rounded-lg bg-green-50 p-4 text-center">
+		<div class="rounded-lg bg-green-500/10 p-4 text-center">
 			<CheckCircle2 class="mx-auto mb-2 h-8 w-8 text-green-600" />
-			<p class="font-medium text-green-900">
+			<p class="font-medium text-green-600">
 				{successCount} image{successCount > 1 ? 's' : ''} uploaded successfully
 			</p>
 		</div>

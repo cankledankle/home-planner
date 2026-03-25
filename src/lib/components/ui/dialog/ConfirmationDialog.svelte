@@ -47,7 +47,7 @@
 	<DialogContent class="sm:max-w-md">
 		<DialogHeader>
 			<div class="flex items-center gap-3">
-				<div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+				<div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
 					<AlertTriangle class="h-5 w-5 text-red-600" />
 				</div>
 				<DialogTitle>{title}</DialogTitle>

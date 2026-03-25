@@ -73,14 +73,14 @@
 		<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-foreground"></div>
 	</div>
 {:else if $auth}
-	<div class="flex min-h-screen bg-background">
+	<div class="flex h-screen overflow-hidden bg-background">
 		<!-- Desktop Sidebar -->
 		<aside class="hidden w-64 flex-col border-r border-border bg-card lg:flex">
 			<div class="border-b border-border p-6">
 				<h1 class="text-xl font-bold text-card-foreground">Home Planner</h1>
 			</div>
 
-			<nav class="flex-1 space-y-1 p-4">
+			<nav class="flex-1 space-y-1 overflow-y-auto p-4">
 				{#each navItems as item}
 					<a
 						href={item.href}
@@ -227,8 +227,8 @@
 		{/if}
 
 		<!-- Main Content -->
-		<main class="min-w-0 flex-1 pt-16 lg:ml-0 lg:pt-0">
-			<div class="overflow-x-hidden p-4 sm:p-6 lg:p-8">
+		<main class="min-w-0 flex-1 overflow-y-auto pt-16 lg:ml-0 lg:pt-0">
+			<div class="p-4 sm:p-6 lg:p-8">
 				{@render children()}
 			</div>
 		</main>

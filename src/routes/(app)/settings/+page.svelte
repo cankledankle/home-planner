@@ -177,7 +177,7 @@
 	}
 
 	function getRoleColor(role: string) {
-		return role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-muted text-foreground';
+		return role === 'admin' ? 'bg-purple-500/15 text-purple-600' : 'bg-muted text-foreground';
 	}
 
 	// Export preset reference
@@ -278,12 +278,10 @@
 	</div>
 
 	<!-- Appearance Settings (All Users) -->
-	<div class="rounded-lg border border-border bg-card dark:border-slate-700 dark:bg-slate-800">
-		<div class="border-b border-border p-6 dark:border-slate-700">
+	<div class="rounded-lg border border-border bg-card">
+		<div class="border-b border-border p-6">
 			<div class="flex items-center gap-3">
-				<div
-					class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30"
-				>
+				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/15">
 					{#if $theme.theme === 'system'}
 						<Monitor class="h-5 w-5 text-purple-600 dark:text-purple-400" />
 					{:else if $theme.theme === 'light'}
@@ -313,8 +311,8 @@
 								type="button"
 								class="rounded-lg border px-4 py-2 text-sm font-medium transition-colors {$theme.theme ===
 								t.value
-									? 'border-purple-500 bg-purple-50 text-purple-700 dark:border-purple-400 dark:bg-purple-900/30 dark:text-purple-300'
-									: 'border-border text-muted-foreground hover:bg-muted dark:border-slate-600 dark:text-muted-foreground dark:hover:bg-slate-700'}"
+									? 'border-purple-500 bg-purple-500/10 text-purple-600'
+									: 'border-border text-muted-foreground hover:bg-muted'}"
 								onclick={() => theme.setTheme(t.value)}
 							>
 								{t.label}
@@ -335,7 +333,7 @@
 			<!-- Section Header -->
 			<div class="flex items-center justify-between border-b border-border p-6">
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
+					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15">
 						<Users class="h-5 w-5 text-blue-600" />
 					</div>
 					<div>

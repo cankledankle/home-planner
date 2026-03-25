@@ -250,11 +250,11 @@
 								<span
 									class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
 									{activity.action.includes('created')
-										? 'bg-green-100 text-green-800'
+										? 'bg-green-500/15 text-green-600'
 										: activity.action.includes('deleted')
-											? 'bg-red-100 text-red-800'
+											? 'bg-red-500/15 text-red-600'
 											: activity.action.includes('updated')
-												? 'bg-blue-100 text-blue-800'
+												? 'bg-blue-500/15 text-blue-600'
 												: 'bg-muted text-foreground'}"
 								>
 									{formatAction(activity.action)}
@@ -314,11 +314,11 @@
 							<span
 								class="inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium
 								{activity.action.includes('created')
-									? 'bg-green-100 text-green-800'
+									? 'bg-green-500/15 text-green-600'
 									: activity.action.includes('deleted')
-										? 'bg-red-100 text-red-800'
+										? 'bg-red-500/15 text-red-600'
 										: activity.action.includes('updated')
-											? 'bg-blue-100 text-blue-800'
+											? 'bg-blue-500/15 text-blue-600'
 											: 'bg-muted text-foreground'}"
 							>
 								{formatAction(activity.action)}

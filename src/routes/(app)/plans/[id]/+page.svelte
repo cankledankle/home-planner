@@ -254,11 +254,11 @@
 	function getStatusColor(status: string) {
 		switch (status) {
 			case 'complete':
-				return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+				return 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30';
 			case 'flagged':
-				return 'bg-red-100 text-red-700 border-red-200';
+				return 'bg-red-500/15 text-red-600 border-red-500/30';
 			default:
-				return 'bg-amber-100 text-amber-700 border-amber-200';
+				return 'bg-amber-500/15 text-amber-600 border-amber-500/30';
 		}
 	}
 
@@ -614,12 +614,12 @@
 							{:else}
 								<!-- Empty slot -->
 								<button
-									class="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-muted p-4 transition-colors hover:border-blue-400 hover:bg-blue-50"
+									class="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-muted p-4 transition-colors hover:border-blue-400 hover:bg-blue-500/10"
 									onclick={() => openSlotUpload(slot.key, slot.label)}
 								>
 									<div class="text-center">
 										<div
-											class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 transition-colors group-hover:bg-blue-200"
+											class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-500/20"
 										>
 											<Upload class="h-4 w-4 text-muted-foreground" />
 										</div>
@@ -727,7 +727,7 @@
 				type="file"
 				accept=".jpg,.jpeg,.png,image/jpeg,image/png"
 				onchange={handleSlotFileSelect}
-				class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
+				class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-blue-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-500/20"
 			/>
 			{#if uploadFile}
 				<div class="space-y-1 text-sm">

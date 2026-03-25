@@ -422,7 +422,7 @@
 	<!-- Bulk Action Bar -->
 	{#if selectedCount > 0}
 		<div
-			class="sticky top-0 z-10 flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+			class="sticky top-0 z-10 flex flex-col gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
 		>
 			<div class="flex items-center gap-3">
 				<Checkbox
@@ -430,7 +430,7 @@
 					indeterminate={someSelected}
 					onCheckedChange={toggleSelectAll}
 				/>
-				<span class="text-sm font-medium text-blue-900">
+				<span class="text-sm font-medium text-blue-600">
 					{selectedCount} selected
 				</span>
 			</div>
@@ -438,7 +438,7 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-card hover:bg-blue-100"
+					class="border-blue-500/30 bg-card hover:bg-blue-500/10"
 					onclick={handleBulkFlag}
 					disabled={bulkActionLoading}
 				>
@@ -448,18 +448,18 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-card hover:bg-blue-100"
+					class="border-blue-500/30 bg-card hover:bg-blue-500/10"
 					onclick={handleBulkUnflag}
 					disabled={bulkActionLoading}
 				>
 					<FlagOff class="mr-1.5 h-3.5 w-3.5" />
 					<span class="hidden sm:inline">Unflag</span>
 				</Button>
-				<div class="mx-1 hidden h-6 w-px bg-blue-200 sm:block"></div>
+				<div class="mx-1 hidden h-6 w-px bg-blue-500/30 sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-card hover:bg-blue-100"
+					class="border-blue-500/30 bg-card hover:bg-blue-500/10"
 					onclick={() => (exportModalOpen = true)}
 					disabled={bulkActionLoading}
 				>
@@ -469,17 +469,17 @@
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-blue-200 bg-card hover:bg-blue-100"
+					class="border-blue-500/30 bg-card hover:bg-blue-500/10"
 					disabled={bulkActionLoading}
 				>
 					<Archive class="mr-1.5 h-3.5 w-3.5" />
 					<span class="hidden sm:inline">ZIP</span>
 				</Button>
-				<div class="mx-1 hidden h-6 w-px bg-blue-200 sm:block"></div>
+				<div class="mx-1 hidden h-6 w-px bg-blue-500/30 sm:block"></div>
 				<Button
 					variant="outline"
 					size="sm"
-					class="border-red-200 bg-card text-red-600 hover:bg-red-50 hover:text-red-700"
+					class="border-red-500/30 bg-card text-red-600 hover:bg-red-500/10"
 					onclick={handleBulkDelete}
 					disabled={bulkActionLoading}
 				>
@@ -567,7 +567,7 @@
 							{#each plans?.data ?? [] as plan}
 								<tr
 									class="transition-colors hover:bg-muted {selectedIds.has(plan.id)
-										? 'bg-blue-50/50'
+										? 'bg-blue-500/10'
 										: ''}"
 								>
 									<td class="px-4 py-3">
@@ -588,10 +588,10 @@
 										<span
 											class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize
 											{plan.status === 'complete'
-												? 'bg-emerald-100 text-emerald-700'
+												? 'bg-emerald-500/15 text-emerald-600'
 												: plan.status === 'flagged'
-													? 'bg-red-100 text-red-700'
-													: 'bg-amber-100 text-amber-700'}"
+													? 'bg-red-500/15 text-red-600'
+													: 'bg-amber-500/15 text-amber-600'}"
 										>
 											{plan.status}
 										</span>
@@ -649,10 +649,10 @@
 									<span
 										class="inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize
 									{plan.status === 'complete'
-											? 'bg-emerald-100 text-emerald-700'
+											? 'bg-emerald-500/15 text-emerald-600'
 											: plan.status === 'flagged'
-												? 'bg-red-100 text-red-700'
-												: 'bg-amber-100 text-amber-700'}"
+												? 'bg-red-500/15 text-red-600'
+												: 'bg-amber-500/15 text-amber-600'}"
 									>
 										{plan.status}
 									</span>

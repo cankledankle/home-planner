@@ -70,7 +70,7 @@
 			</div>
 
 			{#if error}
-				<div class="rounded bg-red-50 p-3 text-sm text-red-600">
+				<div class="rounded bg-red-500/10 p-3 text-sm text-red-600">
 					{error}
 				</div>
 			{/if}

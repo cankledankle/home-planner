@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -9,15 +10,17 @@ import (
 	"strings"
 
 	"github.com/cankledankle/home-planner/internal/db"
+	"github.com/cankledankle/home-planner/internal/storage"
 	"github.com/gofiber/fiber/v2"
 )
 
 type ImportHandler struct {
-	store *db.Store
+	store    *db.Store
+	r2Client *storage.R2Client
 }
 
-func NewImportHandler(store *db.Store) *ImportHandler {
-	return &ImportHandler{store: store}
+func NewImportHandler(store *db.Store, r2Client *storage.R2Client) *ImportHandler {
+	return &ImportHandler{store: store, r2Client: r2Client}
 }
 
 func (h *ImportHandler) PreviewCSV(c *fiber.Ctx) error {
@@ -178,6 +181,12 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 	}
 
 	mode := c.FormValue("mode", "upsert")
+	// Normalize frontend shorthand values
+	if mode == "create" {
+		mode = "create_only"
+	} else if mode == "update" {
+		mode = "update_only"
+	}
 	if mode != "create_only" && mode != "update_only" && mode != "upsert" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -302,6 +311,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 				continue
 			}
 			result.Updated++
+			h.linkPlanImages(ctx, existingPlan.ID, existingPlan.Slug, planData.Images, userID)
 		} else {
 			if mode == "update_only" {
 				result.Skipped++
@@ -338,6 +348,7 @@ func (h *ImportHandler) ImportCSV(c *fiber.Ctx) error {
 			}
 			result.Created++
 			result.PlanIDs = append(result.PlanIDs, createdPlan.ID)
+			h.linkPlanImages(ctx, createdPlan.ID, createdPlan.Slug, planData.Images, userID)
 		}
 	}
 
@@ -364,10 +375,23 @@ type ImportPlanData struct {
 	HeatedSF          *int
 	TotalSF           *int
 	Notes             *string
+	Images            map[string]string // slot → csv filename value
+}
+
+var imgFieldToSlot = map[string]string{
+	"img_render_front":    "render-front",
+	"img_elevation_front": "elevation-front",
+	"img_elevation_left":  "elevation-left",
+	"img_elevation_rear":  "elevation-rear",
+	"img_elevation_right": "elevation-right",
+	"img_floor_plan_main": "floor-plan-main",
+	"img_floor_plan_upper": "floor-plan-upper",
+	"img_floor_plan_lower": "floor-plan-lower",
+	"img_poster":          "poster",
 }
 
 func extractPlanData(rowData map[string]string, mapping map[string]string) ImportPlanData {
-	data := ImportPlanData{}
+	data := ImportPlanData{Images: make(map[string]string)}
 
 	for col, field := range mapping {
 		value := strings.TrimSpace(rowData[col])
@@ -437,10 +461,37 @@ func extractPlanData(rowData map[string]string, mapping map[string]string) Impor
 			if value != "" {
 				data.Notes = &value
 			}
+		default:
+			if slot, ok := imgFieldToSlot[field]; ok && value != "" {
+				data.Images[slot] = value
+			}
 		}
 	}
 
 	return data
+}
+
+func (h *ImportHandler) linkPlanImages(ctx context.Context, planID, planSlug string, images map[string]string, userID string) {
+	if len(images) == 0 {
+		return
+	}
+	linked := 0
+	for slot, csvFilename := range images {
+		if csvFilename == "" {
+			continue
+		}
+		storageKey := fmt.Sprintf("plans/%s/website/%s.jpg", planSlug, slot)
+		filename := fmt.Sprintf("%s--%s.jpg", planSlug, slot)
+		_, err := h.store.UpsertWebsiteFile(ctx, planID, slot, filename, storageKey, "image/jpeg", 0, userID)
+		if err != nil {
+			fmt.Printf("Failed to link image for plan %s slot %s: %v\n", planSlug, slot, err)
+			continue
+		}
+		linked++
+	}
+	if linked > 0 {
+		h.store.RecalculatePlanStatus(ctx, planID)
+	}
 }
 
 func generateSlug(name string) string {

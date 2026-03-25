@@ -119,7 +119,7 @@ func main() {
 		log.Println("R2 storage connected")
 	}
 	exportHandler := handlers.NewExportHandler(store, r2Client)
-	importHandler := handlers.NewImportHandler(store)
+	importHandler := handlers.NewImportHandler(store, r2Client)
 	fileHandler := handlers.NewFileHandler(store, r2Client)
 
 	// Health check endpoint - checks database connectivity
